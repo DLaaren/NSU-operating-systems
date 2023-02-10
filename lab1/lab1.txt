@@ -1,0 +1,38 @@
+1) nm hello :
+	unresolved symbol means you've detected smth that is not defined
+	here i've detected puts as U (compilor changed printf to puts)
+
+2) ldd hello
+
+3) the process of creating static library:
+	- created C file with function definition and then Header file with function declearation
+	- compiled library files without linking them
+	- [ar - creates archives] -> to bundle multiple object files in one static lib
+	   ar rcs hello_static.a hello_static
+
+4) to use this lib we need to compile it together (the lib code just puts in before) : 
+	gcc hello.c lib.c (will search only in this dir)
+	or
+	gcc hello.c -l:lib.c (will search in "library path")
+
+5) run the programm -> wow it works!!
+
+6) the process of creating the dynamic library (linking staticly) :
+	- compiled the lib :
+	  gcc hello_dynamic.c -shared -fPIC -o hello_dynamic.so
+	  [-fPIC] means "Position Independent Code" 
+	  the code in this file is valid whereever its virtual address is. It is needed for shared libs
+	- got all together :
+	  gcc -Wl,-rpath=. hello.c hello_static.a hello_dynamic.so	
+
+7) tun the program -> wow it works!!
+
+8) the process of creating the dynamic library (linking dynamicly):
+	- created C file and Header
+	- include <dlfcn.h> in hello.c
+	- write hDll and so on..
+	- compiled and linked all :
+	 gcc ... -L. -l_libname
+	 there was a problem : cannot open shared object file 
+	 "ldd" showed "not found"
+	 we need to copy the lib to the /usr/lib
