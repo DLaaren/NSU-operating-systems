@@ -32,7 +32,4 @@
 	- include <dlfcn.h> in hello.c
 	- write hDll and so on..
 	- compiled and linked all :
-	 gcc ... -L. -l_libname
-	 there was a problem : cannot open shared object file 
-	 "ldd" showed "not found"
-	 we need to copy the lib to the /usr/lib
+	 gcc ... -Wl,-rpath=.
