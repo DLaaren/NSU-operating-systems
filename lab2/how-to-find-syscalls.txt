@@ -1,0 +1,5 @@
+/proc/kallsyms  (kernel all systems)
+(use grep to filter)
+
+if you cat /proc/kallsyms you will not see addresses of syscalls
+use sudo for it!! 
