@@ -4,7 +4,7 @@
 #include <string.h>
 
 void createHardLink(char* fileName) {
-    char* newFileName = malloc(255);
+    char* newFileName = malloc(256);
     int i = 0;
     while (fileName[i] != '\0') {
         newFileName[i] = fileName[i];

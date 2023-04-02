@@ -22,7 +22,7 @@ int sizeOfString(char* string) {
 }
 
 void reverseFileName(char* pathname, char* result) {
-    char* tmp = malloc(255);
+    char* tmp = malloc(256);
     int pathLen = sizeOfString(pathname);
     for (int i = 0; i < sizeOfString(pathname); i++) {
         result[i] = pathname[i];
@@ -93,7 +93,7 @@ int copyFile(char* fileName) {
         return 1;
     }
 
-    char* reversedFileName = malloc(255);
+    char* reversedFileName = malloc(256);
     reverseFileName(fileName, reversedFileName);
     FILE* reversedFile = fopen(reversedFileName, "w");
     if (reversedFile == NULL) {
@@ -161,8 +161,8 @@ int main(int argc, char* argv[]) {
     if (*(argv[1] + pathLen - 1) == '/') {
         flag++;
     }
-    char* pathname = malloc(255);
-    char* pathnamePattern = malloc(255);
+    char* pathname = malloc(256);
+    char* pathnamePattern = malloc(256);
     for (int i = 0; i < pathLen - flag; i++) {
         pathname[i] = *(argv[1] + i);
         pathnamePattern[i] = *(argv[1] + i);
@@ -178,7 +178,7 @@ int main(int argc, char* argv[]) {
     }
 
     //reverse last argument in pathname
-    char* reversedDirName = malloc(255);
+    char* reversedDirName = malloc(256);
     reverseDirName(pathname, reversedDirName);
     free(pathname);
 

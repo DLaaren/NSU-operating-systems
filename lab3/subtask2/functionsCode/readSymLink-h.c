@@ -3,8 +3,8 @@
 #include <unistd.h>
 
 void readSymLink(char* linkName) {
-    char* buf = malloc(255);
-    if (readlink(linkName, buf, 255) == -1) {
+    char* buf = malloc(256);
+    if (readlink(linkName, buf, 256) == -1) {
         perror("readlink() ");
         free(buf);
         exit(EXIT_FAILURE);
