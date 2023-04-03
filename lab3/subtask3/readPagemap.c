@@ -20,7 +20,7 @@ void readPagemap(char* fileName, unsigned long int virtualAddress) {
         return;
     }
 
-    __uint64_t offset = virtualAddress / getpagesize() * ENTRY_SIZE;
+    __uint64_t offset = (virtualAddress / getpagesize()) * ENTRY_SIZE;
    if(fseek(file, offset, SEEK_SET) != 0){
       perror("fseek() ");
       return;
@@ -33,7 +33,6 @@ void readPagemap(char* fileName, unsigned long int virtualAddress) {
         for (int i = 0; i < ENTRY_SIZE; i++) {
             c = getc(file);
             valueBuf[i] = c;
-            printf("[%d]0x%x ", i, c);
         }
     } else {
         printf("Little endian\n");
@@ -42,10 +41,10 @@ void readPagemap(char* fileName, unsigned long int virtualAddress) {
             valueBuf[ENTRY_SIZE - 1 - i] = c;
         }
     }
+
     printf("Virtual address: 0x%lx, Page size: %d, Entry size: %d\n", virtualAddress, getpagesize(), ENTRY_SIZE);
 
-
-    __uint64_t readValue;
+    __uint64_t readValue = 0;
     for (int i = 0; i < ENTRY_SIZE; i++) {
         readValue = (readValue << 8) + valueBuf[i];
     }
