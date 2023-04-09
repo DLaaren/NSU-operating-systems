@@ -1,0 +1,14 @@
+1) to create directory - createDir
+2) to read directory - readDir
+3) to remove directory - removeDir
+4) to create file - createFile
+5) to read file - readFile
+6) to remove file - removeFile
+7) to create symvolic link - createSymLink
+8) to read symvolic link - readSymLink
+9) to remove file from symvolic link - removeFileFromLink 
+10) to remove symvolic link - removeSymLink
+11) to create hard link - createHardLink
+12) to remove hard link - removeHardLink
+13) to read file's permissions - readFilePermissions
+14) to change file's permissions - changeFilePermissions
