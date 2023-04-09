@@ -1,0 +1,133 @@
+Stack size is fixed, so allocating new variable on the stack won't increase it 
+But the stack can be overflowed --> segfault
+
+to see current size of the stack: 
+#include <sys/resource.h>
+int main (void)
+{
+  struct rlimit limit;
+
+  getrlimit (RLIMIT_STACK, &limit);
+  printf ("\nStack Limit = %ld and %ld max\n", limit.rlim_cur, limit.rlim_max);
+}
+
+
+Unlike stack heap can increase, until it becomes you max size of RAM
+
+before mmap:
+
+555e6915f000-555e69160000 r--p 00000000 103:05 1072815                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+555e69160000-555e69161000 r-xp 00001000 103:05 1072815                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+555e69161000-555e69162000 r--p 00002000 103:05 1072815                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+555e69162000-555e69163000 r--p 00002000 103:05 1072815                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+555e69163000-555e69164000 rw-p 00003000 103:05 1072815                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+555e6a7d3000-555e6a7f4000 rw-p 00000000 00:00 0                          [heap]
+7f4e9a789000-7f4e9a78b000 rw-p 00000000 00:00 0 
+7f4e9a78b000-7f4e9a7ad000 r--p 00000000 103:05 1974952                   /usr/lib/libc.so.6
+7f4e9a7ad000-7f4e9a907000 r-xp 00022000 103:05 1974952                   /usr/lib/libc.so.6
+7f4e9a907000-7f4e9a95f000 r--p 0017c000 103:05 1974952                   /usr/lib/libc.so.6
+7f4e9a95f000-7f4e9a963000 r--p 001d4000 103:05 1974952                   /usr/lib/libc.so.6
+7f4e9a963000-7f4e9a965000 rw-p 001d8000 103:05 1974952                   /usr/lib/libc.so.6
+7f4e9a965000-7f4e9a974000 rw-p 00000000 00:00 0 
+7f4e9a9a0000-7f4e9a9a1000 r--p 00000000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7f4e9a9a1000-7f4e9a9c7000 r-xp 00001000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7f4e9a9c7000-7f4e9a9d1000 r--p 00027000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7f4e9a9d1000-7f4e9a9d3000 r--p 00031000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7f4e9a9d3000-7f4e9a9d5000 rw-p 00033000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7ffcee219000-7ffcee23b000 rw-p 00000000 00:00 0                          [stack]
+7ffcee2d8000-7ffcee2dc000 r--p 00000000 00:00 0                          [vvar]
+7ffcee2dc000-7ffcee2de000 r-xp 00000000 00:00 0                          [vdso]
+ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsyscall]
+
+
+after mmap:
+
+555e6915f000-555e69160000 r--p 00000000 103:05 1072815                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+555e69160000-555e69161000 r-xp 00001000 103:05 1072815                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+555e69161000-555e69162000 r--p 00002000 103:05 1072815                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+555e69162000-555e69163000 r--p 00002000 103:05 1072815                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+555e69163000-555e69164000 rw-p 00003000 103:05 1072815                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+555e6a7d3000-555e6a7f4000 rw-p 00000000 00:00 0                          [heap]
+7f4e9a789000-7f4e9a78b000 rw-p 00000000 00:00 0 
+7f4e9a78b000-7f4e9a7ad000 r--p 00000000 103:05 1974952                   /usr/lib/libc.so.6
+7f4e9a7ad000-7f4e9a907000 r-xp 00022000 103:05 1974952                   /usr/lib/libc.so.6
+7f4e9a907000-7f4e9a95f000 r--p 0017c000 103:05 1974952                   /usr/lib/libc.so.6
+7f4e9a95f000-7f4e9a963000 r--p 001d4000 103:05 1974952                   /usr/lib/libc.so.6
+7f4e9a963000-7f4e9a965000 rw-p 001d8000 103:05 1974952                   /usr/lib/libc.so.6
+7f4e9a965000-7f4e9a974000 rw-p 00000000 00:00 0 
+7f4e9a996000-7f4e9a9a0000 rw-p 00000000 00:00 0                           --> mmap
+7f4e9a9a0000-7f4e9a9a1000 r--p 00000000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7f4e9a9a1000-7f4e9a9c7000 r-xp 00001000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7f4e9a9c7000-7f4e9a9d1000 r--p 00027000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7f4e9a9d1000-7f4e9a9d3000 r--p 00031000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7f4e9a9d3000-7f4e9a9d5000 rw-p 00033000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7ffcee219000-7ffcee23b000 rw-p 00000000 00:00 0                          [stack]
+7ffcee2d8000-7ffcee2dc000 r--p 00000000 00:00 0                          [vvar]
+7ffcee2dc000-7ffcee2de000 r-xp 00000000 00:00 0                          [vdso]
+ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsyscall]
+
+
+
+/**/*/ PROBLEMS WITH SIGSEV //*/*/
+infinite loop of handler 
+it is on the machine level
+
+SIGSEGV (от англ. signal и segmentation violation) — сигнал, используемый в POSIX-системах,
+посылаемый процессу при ошибках сегментации — отказах страниц и других попытках обращения
+к несуществующей области памяти или при обращениях с нарушением прав доступа. 
+
+
+Before munmap 4-6th pages:
+
+557dbf669000-557dbf66a000 r--p 00000000 103:05 1064987                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+557dbf66a000-557dbf66b000 r-xp 00001000 103:05 1064987                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+557dbf66b000-557dbf66c000 r--p 00002000 103:05 1064987                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+557dbf66c000-557dbf66d000 r--p 00002000 103:05 1064987                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+557dbf66d000-557dbf66e000 rw-p 00003000 103:05 1064987                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+557dc09bc000-557dc09dd000 rw-p 00000000 00:00 0                          [heap]
+7f7333657000-7f7333659000 rw-p 00000000 00:00 0 
+7f7333659000-7f733367b000 r--p 00000000 103:05 1974952                   /usr/lib/libc.so.6
+7f733367b000-7f73337d5000 r-xp 00022000 103:05 1974952                   /usr/lib/libc.so.6
+7f73337d5000-7f733382d000 r--p 0017c000 103:05 1974952                   /usr/lib/libc.so.6
+7f733382d000-7f7333831000 r--p 001d4000 103:05 1974952                   /usr/lib/libc.so.6
+7f7333831000-7f7333833000 rw-p 001d8000 103:05 1974952                   /usr/lib/libc.so.6
+7f7333833000-7f7333842000 rw-p 00000000 00:00 0 
+7f7333864000-7f733386e000 rw-p 00000000 00:00 0                           -->mmap
+7f733386e000-7f733386f000 r--p 00000000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7f733386f000-7f7333895000 r-xp 00001000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7f7333895000-7f733389f000 r--p 00027000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7f733389f000-7f73338a1000 r--p 00031000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7f73338a1000-7f73338a3000 rw-p 00033000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7fff08787000-7fff087a8000 rw-p 00000000 00:00 0                          [stack]
+7fff087c3000-7fff087c7000 r--p 00000000 00:00 0                          [vvar]
+7fff087c7000-7fff087c9000 r-xp 00000000 00:00 0                          [vdso]
+ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsyscall]
+
+
+after munmap 4-6th pages:
+
+557dbf669000-557dbf66a000 r--p 00000000 103:05 1064987                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+557dbf66a000-557dbf66b000 r-xp 00001000 103:05 1064987                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+557dbf66b000-557dbf66c000 r--p 00002000 103:05 1064987                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+557dbf66c000-557dbf66d000 r--p 00002000 103:05 1064987                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+557dbf66d000-557dbf66e000 rw-p 00003000 103:05 1064987                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+557dc09bc000-557dc09dd000 rw-p 00000000 00:00 0                          [heap]
+7f7333657000-7f7333659000 rw-p 00000000 00:00 0 
+7f7333659000-7f733367b000 r--p 00000000 103:05 1974952                   /usr/lib/libc.so.6
+7f733367b000-7f73337d5000 r-xp 00022000 103:05 1974952                   /usr/lib/libc.so.6
+7f73337d5000-7f733382d000 r--p 0017c000 103:05 1974952                   /usr/lib/libc.so.6
+7f733382d000-7f7333831000 r--p 001d4000 103:05 1974952                   /usr/lib/libc.so.6
+7f7333831000-7f7333833000 rw-p 001d8000 103:05 1974952                   /usr/lib/libc.so.6
+7f7333833000-7f7333842000 rw-p 00000000 00:00 0 
+7f7333864000-7f7333867000 rw-p 00000000 00:00 0                          //64000 - 67000       //we munmapped 67000-6a000 --> 12288 Б = 4096 * 3 Б
+7f733386a000-7f733386e000 rw-p 00000000 00:00 0                          //6a000 - 6e000
+7f733386e000-7f733386f000 r--p 00000000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7f733386f000-7f7333895000 r-xp 00001000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7f7333895000-7f733389f000 r--p 00027000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7f733389f000-7f73338a1000 r--p 00031000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7f73338a1000-7f73338a3000 rw-p 00033000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7fff08787000-7fff087a8000 rw-p 00000000 00:00 0                          [stack]
+7fff087c3000-7fff087c7000 r--p 00000000 00:00 0                          [vvar]
+7fff087c7000-7fff087c9000 r-xp 00000000 00:00 0                          [vdso]
+ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsyscall]
+

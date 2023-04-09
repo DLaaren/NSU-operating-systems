@@ -1,0 +1,10 @@
+create environment var NAME=5
+
+run the prog
+it changes the value of the var to "CHANGED"
+
+but after the prog ends the value returns "5"
+
+"Environment variables set with the setenv() function will only exist for the life of the program, and are not saved before program termination."
+"You have no way of ever touching the environment of the parent."
+"Переменные окружения существуют в рамках запущенной сессии командного интерпретатора."

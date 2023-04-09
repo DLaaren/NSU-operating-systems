@@ -1,0 +1,83 @@
+Since all of the Unix exec functions replace the running process with the new one,
+the PID of the exec'd process is the same PID it was before.
+
+So "Hello World" will never be printed
+
+The exec family of system calls replaces the program executed by a process. 
+When a process calls exec, all code (text) and data in the process is lost and replaced with the executable of the new program.
+
+1)
+563496919000-56349691a000 r--p 00000000 103:05 1072836                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+56349691a000-56349691b000 r-xp 00001000 103:05 1072836                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+56349691b000-56349691c000 r--p 00002000 103:05 1072836                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+56349691c000-56349691d000 r--p 00002000 103:05 1072836                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+56349691d000-56349691e000 rw-p 00003000 103:05 1072836                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+563497728000-563497749000 rw-p 00000000 00:00 0                          [heap]
+7f6237d20000-7f6237d22000 rw-p 00000000 00:00 0 
+7f6237d22000-7f6237d44000 r--p 00000000 103:05 1974952                   /usr/lib/libc.so.6
+7f6237d44000-7f6237e9e000 r-xp 00022000 103:05 1974952                   /usr/lib/libc.so.6
+7f6237e9e000-7f6237ef6000 r--p 0017c000 103:05 1974952                   /usr/lib/libc.so.6
+7f6237ef6000-7f6237efa000 r--p 001d4000 103:05 1974952                   /usr/lib/libc.so.6
+7f6237efa000-7f6237efc000 rw-p 001d8000 103:05 1974952                   /usr/lib/libc.so.6
+7f6237efc000-7f6237f0b000 rw-p 00000000 00:00 0 
+7f6237f37000-7f6237f38000 r--p 00000000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7f6237f38000-7f6237f5e000 r-xp 00001000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7f6237f5e000-7f6237f68000 r--p 00027000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7f6237f68000-7f6237f6a000 r--p 00031000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7f6237f6a000-7f6237f6c000 rw-p 00033000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7fff02cce000-7fff02cf0000 rw-p 00000000 00:00 0                          [stack]
+7fff02d48000-7fff02d4c000 r--p 00000000 00:00 0                          [vvar]
+7fff02d4c000-7fff02d4e000 r-xp 00000000 00:00 0                          [vdso]
+ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsyscall]
+
+
+2)
+55eaf7375000-55eaf7376000 r--p 00000000 103:05 1072836                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+55eaf7376000-55eaf7377000 r-xp 00001000 103:05 1072836                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+55eaf7377000-55eaf7378000 r--p 00002000 103:05 1072836                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+55eaf7378000-55eaf7379000 r--p 00002000 103:05 1072836                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+55eaf7379000-55eaf737a000 rw-p 00003000 103:05 1072836                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+55eaf82bf000-55eaf82e0000 rw-p 00000000 00:00 0                          [heap]
+7f6c5a3bb000-7f6c5a3bd000 rw-p 00000000 00:00 0 
+7f6c5a3bd000-7f6c5a3df000 r--p 00000000 103:05 1974952                   /usr/lib/libc.so.6
+7f6c5a3df000-7f6c5a539000 r-xp 00022000 103:05 1974952                   /usr/lib/libc.so.6
+7f6c5a539000-7f6c5a591000 r--p 0017c000 103:05 1974952                   /usr/lib/libc.so.6
+7f6c5a591000-7f6c5a595000 r--p 001d4000 103:05 1974952                   /usr/lib/libc.so.6
+7f6c5a595000-7f6c5a597000 rw-p 001d8000 103:05 1974952                   /usr/lib/libc.so.6
+7f6c5a597000-7f6c5a5a6000 rw-p 00000000 00:00 0 
+7f6c5a5d2000-7f6c5a5d3000 r--p 00000000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7f6c5a5d3000-7f6c5a5f9000 r-xp 00001000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7f6c5a5f9000-7f6c5a603000 r--p 00027000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7f6c5a603000-7f6c5a605000 r--p 00031000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7f6c5a605000-7f6c5a607000 rw-p 00033000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7ffc49b69000-7ffc49b8b000 rw-p 00000000 00:00 0                          [stack]
+7ffc49ba7000-7ffc49bab000 r--p 00000000 00:00 0                          [vvar]
+7ffc49bab000-7ffc49bad000 r-xp 00000000 00:00 0                          [vdso]
+ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsyscall]
+
+
+
+
+3)
+55df0f38e000-55df0f38f000 r--p 00000000 103:05 1072836                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+55df0f38f000-55df0f390000 r-xp 00001000 103:05 1072836                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+55df0f390000-55df0f391000 r--p 00002000 103:05 1072836                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+55df0f391000-55df0f392000 r--p 00002000 103:05 1072836                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+55df0f392000-55df0f393000 rw-p 00003000 103:05 1072836                   /home/dlaaren/Desktop/lab4/subtask2/a.out
+55df10004000-55df10025000 rw-p 00000000 00:00 0                          [heap]
+7fe3ed054000-7fe3ed056000 rw-p 00000000 00:00 0 
+7fe3ed056000-7fe3ed078000 r--p 00000000 103:05 1974952                   /usr/lib/libc.so.6
+7fe3ed078000-7fe3ed1d2000 r-xp 00022000 103:05 1974952                   /usr/lib/libc.so.6
+7fe3ed1d2000-7fe3ed22a000 r--p 0017c000 103:05 1974952                   /usr/lib/libc.so.6
+7fe3ed22a000-7fe3ed22e000 r--p 001d4000 103:05 1974952                   /usr/lib/libc.so.6
+7fe3ed22e000-7fe3ed230000 rw-p 001d8000 103:05 1974952                   /usr/lib/libc.so.6
+7fe3ed230000-7fe3ed23f000 rw-p 00000000 00:00 0 
+7fe3ed26b000-7fe3ed26c000 r--p 00000000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7fe3ed26c000-7fe3ed292000 r-xp 00001000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7fe3ed292000-7fe3ed29c000 r--p 00027000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7fe3ed29c000-7fe3ed29e000 r--p 00031000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7fe3ed29e000-7fe3ed2a0000 rw-p 00033000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7ffe25065000-7ffe25087000 rw-p 00000000 00:00 0                          [stack]
+7ffe25136000-7ffe2513a000 r--p 00000000 00:00 0                          [vvar]
+7ffe2513a000-7ffe2513c000 r-xp 00000000 00:00 0                          [vdso]
+ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsyscall]

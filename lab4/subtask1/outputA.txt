@@ -1,0 +1,66 @@
+Output of my prog:
+
+PID: 5718
+
+localVarUninit: 0; its address: 7ffd115309ec       --> 7ffd11512000-7ffd11533000 rw-p 00000000 00:00 0          [stack]
+localVarInit: 0; its address: 7ffd115309f0         --> 7ffd11512000-7ffd11533000 rw-p 00000000 00:00 0          [stack]
+localStaticVar: 1984; its address: 55c2927bd03c    --> 55c2927bd000-55c2927be000 rw-p 00003000 103:05 1065126   /home/dlaaren/Desktop/lab4/subtask1/a.out
+localConstVar: 0; its address: 7ffd115309f4        --> 7ffd11512000-7ffd11533000 rw-p 00000000 00:00 0          [stack]
+globalVarUninit: 0; its address: 55c2927bd044      --> 55c2927bd000-55c2927be000 rw-p 00003000 103:05 1065126   /home/dlaaren/Desktop/lab4/subtask1/a.out
+globalVarInit: 12345; its address: 55c2927bd038    --> 55c2927bd000-55c2927be000 rw-p 00003000 103:05 1065126   /home/dlaaren/Desktop/lab4/subtask1/a.out
+globalConstVar: 1313; its address: 55c2927bb008    --> 55c2927bb000-55c2927bc000 r--p 00002000 103:05 1065126   /home/dlaaren/Desktop/lab4/subtask1/a.out
+
+localVarUninit: 0; its address: 7ffd115309ec
+localVarInit: 1; its address: 7ffd115309f0
+localStaticVar: 1984; its address: 55c2927bd03c
+localConstVar: 1; its address: 7ffd115309f4
+globalVarUninit: 0; its address: 55c2927bd044
+globalVarInit: 12345; its address: 55c2927bd038
+globalConstVar: 1313; its address: 55c2927bb008
+
+localVarUninit: 0; its address: 7ffd115309ec
+localVarInit: 2; its address: 7ffd115309f0
+localStaticVar: 1984; its address: 55c2927bd03c
+localConstVar: 2; its address: 7ffd115309f4
+globalVarUninit: 0; its address: 55c2927bd044
+globalVarInit: 12345; its address: 55c2927bd038
+globalConstVar: 1313; its address: 55c2927bb008
+
+
+Output of proc/5718/maps:
+
+55c2927b9000-55c2927ba000 r--p 00000000 103:05 1065126                   /home/dlaaren/Desktop/lab4/subtask1/a.out
+55c2927ba000-55c2927bb000 r-xp 00001000 103:05 1065126                   /home/dlaaren/Desktop/lab4/subtask1/a.out
+55c2927bb000-55c2927bc000 r--p 00002000 103:05 1065126                   /home/dlaaren/Desktop/lab4/subtask1/a.out
+55c2927bc000-55c2927bd000 r--p 00002000 103:05 1065126                   /home/dlaaren/Desktop/lab4/subtask1/a.out
+55c2927bd000-55c2927be000 rw-p 00003000 103:05 1065126                   /home/dlaaren/Desktop/lab4/subtask1/a.out
+55c2936dd000-55c2936fe000 rw-p 00000000 00:00 0                          [heap]
+7f421f1f9000-7f421f1fb000 rw-p 00000000 00:00 0 
+7f421f1fb000-7f421f21d000 r--p 00000000 103:05 1974952                   /usr/lib/libc.so.6
+7f421f21d000-7f421f377000 r-xp 00022000 103:05 1974952                   /usr/lib/libc.so.6
+7f421f377000-7f421f3cf000 r--p 0017c000 103:05 1974952                   /usr/lib/libc.so.6
+7f421f3cf000-7f421f3d3000 r--p 001d4000 103:05 1974952                   /usr/lib/libc.so.6
+7f421f3d3000-7f421f3d5000 rw-p 001d8000 103:05 1974952                   /usr/lib/libc.so.6
+7f421f3d5000-7f421f3e4000 rw-p 00000000 00:00 0 
+7f421f410000-7f421f411000 r--p 00000000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7f421f411000-7f421f437000 r-xp 00001000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7f421f437000-7f421f441000 r--p 00027000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7f421f441000-7f421f443000 r--p 00031000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7f421f443000-7f421f445000 rw-p 00033000 103:05 1974938                   /usr/lib/ld-linux-x86-64.so.2
+7ffd11512000-7ffd11533000 rw-p 00000000 00:00 0                          [stack]
+7ffd1158a000-7ffd1158e000 r--p 00000000 00:00 0                          [vvar]
+7ffd1158e000-7ffd11590000 r-xp 00000000 00:00 0                          [vdso]
+ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsyscall]
+
+
+Output of 'nm a.out | grep "local":
+
+000000000000403c d localStaticVar.0  --> d = initialized data section
+
+Other variables exist only at the stack. Such objects are not stored in the data section of the executable.
+
+Output of 'nm a.out | grep "global":
+
+0000000000002008 R globalConstVar     --> R = read-only data section
+0000000000004038 D globalVarInit      --> D = initialized data section
+0000000000004044 B globalVarUninit    --> B = unitialized data section (bss)

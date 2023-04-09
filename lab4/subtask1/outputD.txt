@@ -1,0 +1,23 @@
+1st version:
+
+[dlaaren@hppavilion subtask1]$ gcc subtaskD.c 
+subtaskD.c: In function ‘foo’:
+subtaskD.c:7:12: warning: function returns address of local variable [-Wreturn-local-addr]
+    7 |     return &var;
+
+We see the problem just after compilation
+
+That happens because we create local variable inside the function, then 
+we try to return this variable's address "outside" the function
+
+But local variables live only inside function (on the stack) they are initialized in
+
+After the function returns the value, stack frame, which are allocated for this function call,
+no more exists, and so local variables do 
+
+2nd version:
+
+File compiles without warnings. 
+
+In this case we still able to get the result, because we have not rewrite this area of memory.
+But if we call another function just after, the variable on the stack will be rewritten.
