@@ -1,3 +1,5 @@
+//Анонимная память — это чисто оперативная память (RAM). (не привязана ни к какому файлу)
+//#pragma pack(1)  //to disable pudding
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -5,8 +7,7 @@
 
 struct metadata {
     size_t size;
-    int freed;
-    struct metadata* nextMetadata;
+    char freed;
 };
 #define META_SIZE sizeof(struct metadata)
 #define PAGE_SIZE 4096
@@ -29,20 +30,16 @@ void initMalloc() {
 
     memoryHead->size = PAGE_SIZE - META_SIZE * 2;
     memoryHead->freed = 1;
-    memoryHead->nextMetadata = (struct metadata*)(memory_mmapped + PAGE_SIZE - META_SIZE);
 
     memoryTail->size = PAGE_SIZE - META_SIZE * 2;
     memoryTail->freed = 1;
-    memoryTail->nextMetadata = (struct metadata*)memory_mmapped;
-
-    printf("meta size %u\n", META_SIZE);
 
     printf("Debuggin initMalloc()\n");
     printf("memory mmapped: %p\n", memory_mmapped);
-    printf("memoryHead address %p   size %u     nextAddress %p\n", memoryHead, memoryHead->size, memoryHead->nextMetadata);
-    printf("memoryTail address %p   size %u     nextAddress %p\n", memoryTail, memoryTail->size, memoryTail->nextMetadata);
+    printf("memoryHead address %p   size %u\n", memoryHead, memoryHead->size);
+    printf("memoryTail address %p   size %u\n", memoryTail, memoryTail->size);
     printf("check for size: %u\n", (memoryTail - memoryHead) * META_SIZE - META_SIZE);
-    printf("\n");
+    printf("\n\n");
 }
 
 void* my_malloc(size_t size) {
@@ -53,107 +50,120 @@ void* my_malloc(size_t size) {
 
     struct metadata* currBlock = memoryHead;
     //if currBlock is not free or there is not enough space go to next metadata
-    while (!currBlock->freed || currBlock->size - 2 * META_SIZE < size) {
-        currBlock = currBlock->nextMetadata;
+    while (!currBlock->freed || currBlock->size + 2 * META_SIZE < size) {
+        void* tmp = currBlock;
+        currBlock = (struct metadata*)(tmp + META_SIZE + currBlock->size);
         if (currBlock == memoryTail) {
             printf("There is no free memory space\n");
             return NULL;
         }
-        void* tmpPtr = currBlock;
-        currBlock = (struct metadata*)(tmpPtr + META_SIZE);
+        currBlock = (struct metadata*)(tmp + 2 * META_SIZE + currBlock->size);
     }
 
     printf("Debugging my_malloc()\n");
 
-/* || HEAD |  *** busy space ***  | mark || mark(currBlock) |  *** free space ***  | TAIL ||  */
-    
-/* || currBlock |  *** allocated memory ***  | currBlock->next || tmpHead |   *** free space ***  | tmpTail ||   */
-
-    struct metadata* tmpTailBlock = currBlock->nextMetadata;
+    void* currBlock_ptr = currBlock;
+    struct metadata* tmpTailBlock = (struct metadata*)(currBlock_ptr + META_SIZE + currBlock->size);
     size_t tmpSize = currBlock->size;
 
-    void* ptrCurrBlock = currBlock;
     currBlock->freed = 0;
     currBlock->size = size;
-    currBlock->nextMetadata = (struct metadata*)(ptrCurrBlock + META_SIZE + size);
 
-    printf("CurrBlock address %p        CurrBlock size %u       CurrBlock next mark address %p\n", currBlock, currBlock->size, currBlock->nextMetadata);
+    printf("CurrBlock address %p        CurrBlock size %u\n", currBlock, currBlock->size);
 
-    currBlock->nextMetadata->freed = 0;
-    currBlock->nextMetadata->size = size;
-    currBlock->nextMetadata->nextMetadata = currBlock;
+    struct metadata* endCurrBlock = (struct metadata*)(currBlock_ptr + META_SIZE + size);
+    endCurrBlock->freed = 0;
+    endCurrBlock->size = size;
 
-    printf("nextCurrBlock address %p    nextCurrBlock size %u   nextCurrBlock next mark address %p\n", currBlock->nextMetadata, currBlock->nextMetadata->size, currBlock->nextMetadata->nextMetadata);
-    printf("check for size: %u\n\n", (currBlock->nextMetadata - currBlock) * META_SIZE - META_SIZE);
+    printf("nextCurrBlock address %p    nextCurrBlock size %u\n", endCurrBlock, endCurrBlock->size);
+    printf("check for size: %u\n\n", (endCurrBlock - currBlock) * META_SIZE - META_SIZE);
 
-    void* ptrNextCurrBlock = currBlock->nextMetadata;
-    struct metadata* tmpHeadBlock = (struct metadata*)(ptrNextCurrBlock + META_SIZE);
+    void* endCurrBlock_ptr = endCurrBlock;
+    struct metadata* tmpHeadBlock = (struct metadata*)(endCurrBlock_ptr + META_SIZE);
 
     tmpHeadBlock->freed = 1;
     tmpHeadBlock->size = tmpSize - 2 * META_SIZE - currBlock->size;
-    tmpHeadBlock->nextMetadata = tmpTailBlock;
 
     tmpTailBlock->freed = 1;
     tmpTailBlock->size = tmpSize - 2 * META_SIZE - currBlock->size;
-    tmpTailBlock->nextMetadata = tmpHeadBlock;
 
-    printf("tmpHead address %p     tmpHead size %u     tmpHead next mark address %p\n", tmpHeadBlock, tmpHeadBlock->size, tmpHeadBlock->nextMetadata);
-    printf("tmpTail address %p     tmpTail size %u     tmpTail next mark address %p\n", tmpTailBlock, tmpTailBlock->size, tmpTailBlock->nextMetadata);
+    printf("tmpHead address %p     tmpHead size %u\n", tmpHeadBlock, tmpHeadBlock->size);
+    printf("tmpTail address %p     tmpTail size %u\n", tmpTailBlock, tmpTailBlock->size);
     printf("check for size: %u\n", (tmpTailBlock - tmpHeadBlock) * META_SIZE - META_SIZE);
     
-    printf("\nreturned value %p\n\n\n", ptrCurrBlock + META_SIZE);
+    printf("\nreturned value %p\n\n\n", currBlock_ptr + META_SIZE);
 
-    return ptrCurrBlock + META_SIZE;
+    return currBlock_ptr + META_SIZE;
 }
 
 void my_free(void* ptr) {
     if (ptr == NULL) {
-        printf("Calling my_free() on a NULL pointer\n");
+        printf("Calling my_free() with NULL pointer\n");
         return;
     }
 
     printf("Debugging my_free()\n");
     printf("gotten address %p\n", ptr);
 
-    struct metadata* currBlock = (ptr - META_SIZE);
+    struct metadata* currBlock = (struct metadata*)(ptr - META_SIZE);
 
-    struct metadata* tmpTailBlock = currBlock->nextMetadata;
-
-    printf("CurrBlock address %p    next mark address %p\n", currBlock, tmpTailBlock);
+    void* currBlock_ptr = currBlock;
+    struct metadata* endCurrBlock = (struct metadata*)(currBlock_ptr + META_SIZE + currBlock->size);
+    void* endCurrBlock_ptr = endCurrBlock;
 
     currBlock->freed = 1;
-    tmpTailBlock->freed = 1;
+    endCurrBlock->freed = 1;
 
-    size_t tmpSizeCurr = currBlock->size;
-    void* ptrCurrBlock = currBlock;
-    if (ptrCurrBlock == memory_mmapped) {
+    printf("CurrBlock address %p    next mark address %p\n", currBlock, endCurrBlock);
+
+    if (currBlock_ptr == memory_mmapped && endCurrBlock_ptr == memory_mmapped + PAGE_SIZE - META_SIZE) {
         printf("\n\n");
         return;
     }
 
-    struct metadata* tmpHeadBlock = (struct metadata*)(ptrCurrBlock - META_SIZE);
-
-    printf("is prev freed? = %u\n", tmpHeadBlock->freed);
-
-    if (tmpHeadBlock->freed == 0) {
-        printf("\n\n");
-        return;
+    struct metadata* prevTail;
+    struct metadata* nextHead;
+    if (currBlock_ptr != memory_mmapped) {
+        prevTail = (struct metadata*)(currBlock_ptr - META_SIZE);
+        printf("is prevBlock freed? = %u\n", prevTail->freed);
+    }
+    if (endCurrBlock_ptr != memory_mmapped + PAGE_SIZE - META_SIZE) {
+        nextHead = (struct metadata*)(endCurrBlock_ptr + META_SIZE);
+        printf("is nextBlock freed? = %u\n", nextHead->freed);
     }
 
-    tmpHeadBlock = tmpHeadBlock->nextMetadata;
-    size_t tmpSize = tmpHeadBlock->size;
+    size_t sizeCurrBlock = currBlock->size;
+    struct metadata* prevHead;
+    if (prevTail->freed == 1 && currBlock_ptr != memory_mmapped) {
+        size_t sizePrev = prevTail->size;
+        void* prevTail_ptr = prevTail;
+        prevHead = (struct metadata*)(prevTail_ptr - sizePrev - META_SIZE);
+        
+        currBlock = prevHead;
+        currBlock->freed = 1;
+        endCurrBlock->freed = 1;
+        currBlock->size = sizePrev + 2 * META_SIZE + sizeCurrBlock;
+        endCurrBlock->size = sizePrev + 2 * META_SIZE + sizeCurrBlock;
+    }
 
-    tmpHeadBlock->size = tmpSize + tmpSizeCurr + 2 * META_SIZE;
-    tmpHeadBlock->nextMetadata = tmpTailBlock;
+    struct metadata* nextTail;
+    if (nextHead->freed == 1 && endCurrBlock_ptr != memory_mmapped + PAGE_SIZE - META_SIZE) {
+        size_t sizeNext = nextHead->size;
+        void* nextHead_ptr = nextHead;
+        nextTail = (struct metadata*)(nextHead_ptr + META_SIZE + sizeNext);
 
-    tmpTailBlock->size = tmpSize + tmpSizeCurr + 2 * META_SIZE;
-    tmpTailBlock->nextMetadata = tmpHeadBlock;
+        endCurrBlock = nextTail;
+        currBlock->freed = 1;
+        endCurrBlock->freed = 1;
+        currBlock->size = sizeCurrBlock + 2 * META_SIZE + sizeNext;
+        endCurrBlock->size = sizeCurrBlock + 2 * META_SIZE + sizeNext;
+    }
 
-    printf("tmpHead address %p     tmpHead size %u     tmpHead next mark address %p\n", tmpHeadBlock, tmpHeadBlock->size, tmpHeadBlock->nextMetadata);
-    printf("tmpTail address %p     tmpTail size %u     tmpTail next mark address %p\n", tmpTailBlock, tmpTailBlock->size, tmpTailBlock->nextMetadata);
+    printf("currBlock address %p     currBlock size %u\n", currBlock, currBlock->size);
+    printf("endCurrBlock address %p     endCurrBlock size %u\n", endCurrBlock, endCurrBlock->size);
 
     printf("\n\n");
-}   
+} 
 
 void freeAll() {
     if (munmap(memory_mmapped, PAGE_SIZE) != 0) {
@@ -162,10 +172,13 @@ void freeAll() {
 }
 
 int main() {
+    printf("%d %d %d\n\n\n", sizeof(size_t), sizeof(char), sizeof(struct metadata));
+    printf("meta size %u\n", META_SIZE);
+    printf("page size %u\n", PAGE_SIZE);
     char* ptr = (char*)my_malloc(16);
-    printf("\n\n");
+    printf("\n");
     char* ptr2 = (char*)my_malloc(16);
-    printf("\n\n");
+    printf("\n");
     char* ptr3 = (char*)my_malloc(16);
     my_free(ptr2);
     my_free(ptr3);

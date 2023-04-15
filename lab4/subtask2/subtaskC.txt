@@ -1,4 +1,5 @@
-Stack size is fixed, so allocating new variable on the stack won't increase it 
+Max stack size is fixed
+Allocating new array on the stack makes him to grow to 'zero'
 But the stack can be overflowed --> segfault
 
 to see current size of the stack: 
@@ -11,8 +12,36 @@ int main (void)
   printf ("\nStack Limit = %ld and %ld max\n", limit.rlim_cur, limit.rlim_max);
 }
 
+i = 0:
+7ffca2ac9000-7ffca2aea000 rw-p 00000000 00:00 0   [stack]
+7ffca2aea000 – 7ffca2ac9000 = 21000(16) = 135168(10)
 
-Unlike stack heap can increase, until it becomes you max size of RAM
+
+i = 1:
+7ffca29f3000-7ffca2aea000 rw-p 00000000 00:00 0   [stack]
+7ffca2aea000 – 7ffca29f3000 = F7000(16) = 1011712(10)
+
+i = 2:
+7ffca280b000-7ffca2aea000 rw-p 00000000 00:00 0   [stack]
+7ffca2aea000 – 7ffca280b000 = 2DF000(16) = 3010560(10)
+
+
+
+Heap can increase, until it becomes you max size of RAM
+
+i = 0:
+55e770aa2000-55e770ac3000 rw-p 00000000 00:00 0    [heap]
+55e770ac3000 – 55e770aa2000 = 21000(16) = 135168(10)
+
+i = 1:
+55e770aa2000-55e770af4000 rw-p 00000000 00:00 0    [heap]
+55e770af4000 – 55e770aa2000 = 52000(16) = 335872(10)
+
+i = 2:
+55e770aa2000-55e770b25000 rw-p 00000000 00:00 0    [heap]
+55e770b25000 – 55e770aa2000 = 83000(16) = 536576(10)
+
+
 
 before mmap:
 

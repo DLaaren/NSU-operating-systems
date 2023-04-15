@@ -4,7 +4,7 @@
 
 int main(int argc, char** argv) {
     printf("PID %d\n", getpid());
-    sleep(10);
+    sleep(1);
     if (execl(argv[0], "./a.out", (char*)NULL) != 0) {
         perror("execl()");
         exit(EXIT_FAILURE);

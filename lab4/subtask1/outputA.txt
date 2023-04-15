@@ -55,7 +55,7 @@ ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsysca
 
 Output of 'nm a.out | grep "local":
 
-000000000000403c d localStaticVar.0  --> d = initialized data section
+000000000000403c d localStaticVar.0   --> d = initialized data section
 
 Other variables exist only at the stack. Such objects are not stored in the data section of the executable.
 

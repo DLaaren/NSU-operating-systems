@@ -14,8 +14,8 @@ int sigsegv_handler_called = 0;
 void allocatorStack(int i) {
     printf("%d\n", i);
     i++;
-    char buffer[1000000] = {0}; // stack overflow on 7-8th iteration 
-    sleep(1);
+    char buffer[10000] = {0};
+    sleep(5);
     allocatorStack(i);
 }
 
@@ -23,8 +23,8 @@ void allocatorHeap(int i) {
     printf("%d\n", i);
     i++;
     while (i < 100) {
-        char *buffer = (char*)malloc(1000000);
-        sleep(2);
+        char *buffer = (char*)malloc(100000);
+        sleep(5);
         allocatorHeap(i);
         free(buffer);
     }
