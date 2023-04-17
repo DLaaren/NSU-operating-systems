@@ -38,7 +38,7 @@ void signalHandler() {
 
 int main() {
     printf("PID %d\n", getpid());
-    sleep(10);
+    //sleep(10);
     int i = 0;
     //allocatorStack(i);
     //allocatorHeap(i);
@@ -61,7 +61,7 @@ int main() {
         printf("write to mmapped pages: %d\n", *ptr);
     }
 
-    sleep(10);
+    //sleep(10);
 
     if (munmap(ptr + 4096 * 3, 4096 * 3) != 0) {
         perror("sigaction()");

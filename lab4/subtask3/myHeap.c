@@ -54,7 +54,7 @@ void* my_malloc(size_t size) {
         void* tmp = currBlock;
         currBlock = (struct metadata*)(tmp + META_SIZE + currBlock->size);
         if (currBlock == memoryTail) {
-            printf("There is no free memory space\n");
+            printf("There is no free memory space\n\n");
             return NULL;
         }
         currBlock = (struct metadata*)(tmp + 2 * META_SIZE + currBlock->size);
@@ -175,6 +175,7 @@ int main() {
     printf("%d %d %d\n\n\n", sizeof(size_t), sizeof(char), sizeof(struct metadata));
     printf("meta size %u\n", META_SIZE);
     printf("page size %u\n", PAGE_SIZE);
+    //char* ptrn = (char*)my_malloc(4000);
     char* ptr = (char*)my_malloc(16);
     printf("\n");
     char* ptr2 = (char*)my_malloc(16);
