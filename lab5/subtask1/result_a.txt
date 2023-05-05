@@ -1,0 +1,27 @@
+_exit "немедленно" завершает работу программы.
+exit() flushes io buffers and does some other things like run functions registered by atexit(). exit() invokes _end( )
+_exit() just ends the process without doing that. You call _exit() from the parent process when creating a daemon for example.
+
+The function _exit() terminates the calling process "immediately". 
+Any open file descriptors belonging to the process are closed; 
+any children of the process are inherited by process 1, init, 
+and the process's parent is sent a SIGCHLD signal. 
+
+После завершения процесса его pid остается занят - 
+это состояние процесса называется "зомби". 
+Чтобы освободить pid родительский процесс должен дождаться 
+завершения дочернего и очистить таблицу процессов. 
+Это достигается вызовом: wait / waitpid
+
+Виртуальное адресное пространство не изменилось
+
+COW (copy on write):
+после fork'а процесса дочерний копирует виртуальные и физические
+адреса памяти родительского процесса. Но при попытке изменения
+данных в дочернем, ОС перехватывает попытки перезаписи и аллоцирует
+новую физическую страницу для дочернего под изменяемые данные
+
+Процесс не получить код завершения дочернего процесса,
+если дочерний был завершен или остановлен сигналом --> вернётся код сигнала
+
+ps -acHf -- to watch process state

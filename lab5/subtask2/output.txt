@@ -1,0 +1,24 @@
+zombie process or defunct process is a process 
+that has completed execution (via the exit system call) 
+but still has an entry in the process table: 
+it is a process in the "Terminated state". 
+This occurs for the child processes, where the entry is 
+still needed to allow the parent process to read 
+its child's exit status: once the exit status is read 
+via the wait system call, the zombie's entry is removed from 
+the process table and it is said to be "reaped".
+
+Короче: Если родитель не получит SIGCHILD, то ребёнок - зомби.
+
+Зомби-процессы забивают пул PID'ов --> 
+огромное кол-во зомби-процессов может привести к тому, что
+невозможно будет создать новый процесс 
+(решается только холодной перезагрузкой)
+
+Если родитель завершился раньше дочерних, то дочернии становятся процессами-сиротами
+Все процессы-сироты немедленно усыновляются специальным системным процессом init. 
+Эта операция ещё называется переподчинением (англ. reparenting) и происходит автоматически.
+В современных Linux (начиная с ядра 3.4) поддерживается механизм subreaper. 
+Другой процесс, кроме init, может объявить себя «усыновителем». 
+В качестве нового родителя для процесса-сироты становится первый subreaper 
+среди предков данного процесса или, если таких нет, то процесс с PID, равным единице.
