@@ -1,0 +1,2 @@
+The process which wants to read from the pipe should close filedes[1], 
+and the process which wants to write to the pipe should close filedes[0].

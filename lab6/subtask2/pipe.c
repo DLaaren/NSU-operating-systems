@@ -10,28 +10,32 @@
 
 #define PAGE_SIZE 4096
 
-int writeNumbers(void* memory_ptr) {
+int writeNumbersToPipe(void* pipefd) {
+    int pipe = *((int*)pipefd);
     for (unsigned int i = 0; i < PAGE_SIZE; i++) {
-        *((unsigned int*)memory_ptr + i) = i;
-        if (i == PAGE_SIZE - 1) {
+        write(pipe, &i, sizeof(unsigned int));
+        if (i == (PAGE_SIZE - 1)) {
             i = 0;
         }
     }
 }
 
-int readNumbers(void* memory_ptr) {
+int readNumbersFromPipe(void* pipefd) {
+    int pipe = *((int*)pipefd);
+    unsigned int j = 101;
     for (unsigned int i = 0; i < PAGE_SIZE; i++) {
-        if (*((unsigned int*)memory_ptr + i) != i) {
-            printf("Wrong written numbers at %d, but the result is %u!!\n", i, *((unsigned int*)memory_ptr + i));
+        read(pipe, &j, sizeof(unsigned int));
+        if (j != i) {
+            printf("Wrong written numbers at %u, but the result is %u!!\n", i, j);
         }
-        if (i == PAGE_SIZE - 1) {
+        if (i == (PAGE_SIZE - 1)) {
             i = 0;
         }
     }
 }
 
 int main() {
-    int output_fd = open("/home/dlaaren/Desktop/lab6/subtask1/output.txt", O_RDWR);
+    int output_fd = open("/home/dlaaren/Desktop/lab6/subtask2/output.txt", O_RDWR);
     if (output_fd == -1) {
         perror("open()");
         return -1;
@@ -41,8 +45,17 @@ int main() {
         perror("mmap()");
         return -1;
     }
-    int pid1 = clone(writeNumbers, memory_ptr + PAGE_SIZE, CLONE_VM | CLONE_FILES | CLONE_FS, memory_ptr);
-    int pid2 = clone(readNumbers, memory_ptr + PAGE_SIZE, CLONE_VM | CLONE_FILES | CLONE_FS, memory_ptr);
+
+    //creating pipe
+    int pipefd[2];
+    if (pipe(pipefd) == -1) {
+        perror("pipe()");
+        return -1;
+    }
+    //pipefd[0] refers to the read end of the pipe. pipefd[1] refers to the write end of the pipe.
+    int pid1 = clone(writeNumbersToPipe, memory_ptr + PAGE_SIZE, CLONE_VM | CLONE_FILES | CLONE_FS, &pipefd[1]);
+    sleep(0.5);
+    int pid2 = clone(readNumbersFromPipe, memory_ptr + PAGE_SIZE, CLONE_VM | CLONE_FILES | CLONE_FS, &pipefd[0]);
     if (pid1 == -1 || pid2 == -1) {
         perror("clone()");
         return -1;

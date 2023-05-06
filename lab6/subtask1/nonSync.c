@@ -22,7 +22,7 @@ int writeNumbers(void* memory_ptr) {
 int readNumbers(void* memory_ptr) {
     for (unsigned int i = 0; i < PAGE_SIZE; i++) {
         if (*((unsigned int*)memory_ptr + i) != i) {
-            printf("Wrong written numbers at %d, but the result is %u!!\n", i, *((unsigned int*)memory_ptr + i));
+            printf("Wrong written numbers at %u, but the result is %u!!\n", i, *((unsigned int*)memory_ptr + i));
         }
         if (i == PAGE_SIZE - 1) {
             i = 0;
