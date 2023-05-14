@@ -7,25 +7,35 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #define PAGE_SIZE 4096
 
 int writeNumbersToPipe(void* pipefd) {
     int pipe = *((int*)pipefd);
     for (unsigned int i = 0; i < PAGE_SIZE; i++) {
-        write(pipe, &i, sizeof(unsigned int));
+        int err = write(pipe, &i, sizeof(unsigned int));
+        if (err == -1) {
+            perror("write pipe");
+        }
+        // fprintf(stderr, "the function have written number %u\n", i);
         if (i == (PAGE_SIZE - 1)) {
             i = 0;
         }
     }
+    return 0;
 }
 
 int readNumbersFromPipe(void* pipefd) {
     int pipe = *((int*)pipefd);
-    unsigned int j = 101;
+
+    unsigned int j = 1331;
     for (unsigned int i = 0; i < PAGE_SIZE; i++) {
-        read(pipe, &j, sizeof(unsigned int));
-        if (j != i) {
+        int err = read(pipe, &j, sizeof(unsigned int));
+        if (err == -1) {
+            perror("read pipe");
+        } else if (j != i) {
             printf("Wrong written numbers at %u, but the result is %u!!\n", i, j);
         }
         if (i == (PAGE_SIZE - 1)) {
@@ -35,13 +45,9 @@ int readNumbersFromPipe(void* pipefd) {
 }
 
 int main() {
-    int output_fd = open("/home/dlaaren/Desktop/lab6/subtask2/output.txt", O_RDWR);
-    if (output_fd == -1) {
-        perror("open()");
-        return -1;
-    }
-    void *memory_ptr = mmap(NULL, PAGE_SIZE, PROT_WRITE | PROT_READ, MAP_SHARED, output_fd, 0);
-    if (memory_ptr == NULL) {
+    void *memory_ptr1 = mmap(NULL, PAGE_SIZE, PROT_WRITE | PROT_READ, MAP_ANONYMOUS | MAP_SHARED, -1, 0);
+    void *memory_ptr2 = mmap(NULL, PAGE_SIZE, PROT_WRITE | PROT_READ, MAP_ANONYMOUS | MAP_SHARED, -1, 0);
+    if (memory_ptr1 == NULL || memory_ptr2 == NULL) {
         perror("mmap()");
         return -1;
     }
@@ -52,13 +58,19 @@ int main() {
         perror("pipe()");
         return -1;
     }
+
     //pipefd[0] refers to the read end of the pipe. pipefd[1] refers to the write end of the pipe.
-    int pid1 = clone(writeNumbersToPipe, memory_ptr + PAGE_SIZE, CLONE_VM | CLONE_FILES | CLONE_FS, &pipefd[1]);
-    sleep(0.5);
-    int pid2 = clone(readNumbersFromPipe, memory_ptr + PAGE_SIZE, CLONE_VM | CLONE_FILES | CLONE_FS, &pipefd[0]);
+    int pid1 = clone(writeNumbersToPipe, memory_ptr1 + PAGE_SIZE, CLONE_VM | CLONE_FILES | CLONE_FS | CLONE_NEWUTS | CLONE_NEWPID | SIGCHLD, &pipefd[1]);
+    int pid2 = clone(readNumbersFromPipe, memory_ptr2 + PAGE_SIZE, CLONE_VM | CLONE_FILES | CLONE_FS | CLONE_NEWUTS | CLONE_NEWPID | SIGCHLD, &pipefd[0]);
     if (pid1 == -1 || pid2 == -1) {
         perror("clone()");
         return -1;
     }
+
+    //pid_t waitpid(pid_t pid, int *status, int options);  
+    int status1, status2;
+    waitpid(pid1, &status1, 0);
+    waitpid(pid2, &status2, 0);
+
     return 0;
 }
