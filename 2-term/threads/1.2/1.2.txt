@@ -1,0 +1,57 @@
+detached && joinable
+
+Create a detached thread when you know you won't want to wait for it 
+with pthread_join(). The only performance benefit is that when a detached thread 
+terminates, its resources can be released immediately instead of having 
+to wait for the thread to be joined before the resources can be released.
+
+Also, as detached thread automatically release the resources on exit, therefore 
+there is no way to determine its return value of detached thread function.
+
+
+By default a thread runs in joinable mode. 
+Joinable thread will not release any resource even after the end of thread function, 
+until some other thread calls pthread_join() with its ID.
+
+pthread_join() is a blocking call, it will block the calling thread until 
+the other thread ends.
+
+c)
+
+Если строка выделяется на стеке, то при возвращении указателя из потока,
+после разыменования получим белеберду, т к поток завершился, вернул значение
+и освободил ресурсы.
+Если же строка выделяласть на куче, то проблем нет.
+
+d)
+.......
+mythread [pid:2791 parent-pid:2540 thread-group-pid:35530]: Hello from mythread!
+mythread [pid:2791 parent-pid:2540 thread-group-pid:35531]: Hello from mythread!
+mythread [pid:2791 parent-pid:2540 thread-group-pid:35532]: Hello from mythread!
+mythread [pid:2791 parent-pid:2540 thread-group-pid:35533]: Hello from mythread!
+mythread [pid:2791 parent-pid:2540 thread-group-pid:35534]: Hello from mythread!
+mythread [pid:2791 parent-pid:2540 thread-group-pid:35535]: Hello from mythread!
+mythread [pid:2791 parent-pid:2540 thread-group-pid:35536]: Hello from mythread!
+mythread [pid:2791 parent-pid:2540 thread-group-pid:35537]: Hello from mythread!
+mythread [pid:2791 parent-pid:2540 thread-group-pid:35538]: Hello from mythread!
+mythread [pid:2791 parent-pid:2540 thread-group-pid:35539]: Hello from mythread!
+mythread [pid:2791 parent-pid:2540 thread-group-pid:35540]: Hello from mythread!
+mythread [pid:2791 parent-pid:2540 thread-group-pid:35541]: Hello from mythread!
+mythread [pid:2791 parent-pid:2540 thread-group-pid:35542]: Hello from mythread!
+mythread [pid:2791 parent-pid:2540 thread-group-pid:35543]: Hello from mythread!
+mythread [pid:2791 parent-pid:2540 thread-group-pid:35544]: Hello from mythread!
+mythread [pid:2791 parent-pid:2540 thread-group-pid:35545]: Hello from mythread!
+main: pthread_create() failed: Resource temporarily unavailable
+
+EAGAIN Insufficient resources to create another thread.
+ the limit you're hitting is lack of virtual memory
+
+Я думаю заканчивается виртуальная память для выделения стека для нового потока.
+Т к треды по умолчанию типа join, т е они не высвобождают ресурсы после завершения,
+и ждут, когда главный тред соберёт данные.
+
+There is a thread limit for linux and it can be modified runtime by writing 
+desired limit to /proc/sys/kernel/threads-max. 
+The default value is computed from the available system memory.
+
+e) Бесконечно создаются потоки, т к ресурсы после завершения потока освобождаются

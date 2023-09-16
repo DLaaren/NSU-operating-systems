@@ -1,0 +1,175 @@
+
+    threads share the
+    same global memory (data and heap segments), but each thread has
+    its own stack (automatic variables).
+
+    the threads share:
+•  process ID
+•  parent process ID
+•  process group ID and session ID
+•  controlling terminal
+•  user and group IDs
+•  open file descriptors
+•  record locks (see fcntl(2))
+•  signal dispositions
+•  file mode creation mask (umask(2))
+•  current directory (chdir(2)) and root directory (chroot(2))
+•  interval timers (setitimer(2)) and POSIX timers
+    (timer_create(2))
+•  nice value (setpriority(2))
+•  resource limits (setrlimit(2))
+•  measurements of the consumption of CPU time (times(2)) and
+    resources (getrusage(2))
+
+    the threads not share:
+•  thread ID (the pthread_t data type)
+•  signal mask (pthread_sigmask(3))
+•  the errno variable
+•  alternate signal stack (sigaltstack(2))
+•  real-time scheduling policy and priority (sched(7))
+The following Linux-specific features are also per-thread:
+•  capabilities (see capabilities(7))
+•  CPU affinity (sched_setaffinity(2))
+
+a)
+
+Второй поток не запускался, т к главный поток завершался раньше, 
+следует добавить pthread_exit(NULL).
+Эта функция позволяет запущенным потокам продолжить исполнение, 
+даже если главный поток завершился.
+
+c)
+
+pthread_t is the data type used to uniquely identify a thread.
+
+gettid и pthread_self - не одно и то же
+
+gettid - get pid_t that is unique system-wide (addigned by the kernel)
+pthread_self - ("непрозрачные данные") get pthread_t; implemention independent; needed for comparison
+
+pthread_compare() --- принимает 2 аргумента типа pthread_t
+Это сделано для портативности, т к разные системы по-разному имплементировать TID (как структуру или как указатель)
+Поэтому сравнивают прозрачные (битовое представление)
+
+
+
+global_var == адреса одинаковы т к переменная хранится на куче - в общей для потоков памяти
+ОБЩЕЕ::
+Передаём указатели на переменные в тред
+Тред кладёт эти указатели на стек
+Если смотреть адрес, где лежат полученные значения, то адреса будут разные
+Но если разыменовать указатели, то мы сможем получить значения переменных,
+т к все данные находятся в одном виртуальном пространстве
+local_var == ??
+local_const_var == ??
+local_static_var == ??
+
+d) 
+
+global_var == видны, т к переменная лежит в общей памяти
+local_vars == если менять поменять указатель, то поменяется значение,
+т к указатель теперь указывает на другую область памяти,
+а если менять разыменовывая указатель, то значения изменятся.
+
+e)
+
+55ada6cd4000-55ada6cd5000 r--p 00000000 103:05 12062131                  /home/dlaaren/Desktop/os/threads/thread-example-c
+55ada6cd5000-55ada6cd6000 r-xp 00001000 103:05 12062131                  /home/dlaaren/Desktop/os/threads/thread-example-c
+55ada6cd6000-55ada6cd7000 r--p 00002000 103:05 12062131                  /home/dlaaren/Desktop/os/threads/thread-example-c
+55ada6cd7000-55ada6cd8000 r--p 00002000 103:05 12062131                  /home/dlaaren/Desktop/os/threads/thread-example-c
+55ada6cd8000-55ada6cd9000 rw-p 00003000 103:05 12062131   <-- here global and static vars      /home/dlaaren/Desktop/os/threads/thread-example-c
+55ada7d1f000-55ada7d40000 rw-p 00000000 00:00 0                          [heap]
+7f8f1d7ff000-7f8f1d800000 ---p 00000000 00:00 0 
+7f8f1d800000-7f8f1e000000 rw-p 00000000 00:00 0           <-- here pthread local vars
+7f8f1e000000-7f8f1e026000 r--p 00000000 103:05 12200081                  /usr/lib/libc.so.6
+7f8f1e026000-7f8f1e185000 r-xp 00026000 103:05 12200081                  /usr/lib/libc.so.6
+7f8f1e185000-7f8f1e1da000 r--p 00185000 103:05 12200081                  /usr/lib/libc.so.6
+7f8f1e1da000-7f8f1e23e000 r--p 001d9000 103:05 12200081                  /usr/lib/libc.so.6
+7f8f1e23e000-7f8f1e240000 rw-p 0023d000 103:05 12200081                  /usr/lib/libc.so.6
+7f8f1e240000-7f8f1e24d000 rw-p 00000000 00:00 0 
+7f8f1e3be000-7f8f1e3c2000 rw-p 00000000 00:00 0 
+7f8f1e3e7000-7f8f1e3e8000 r--p 00000000 103:05 12200072                  /usr/lib/ld-linux-x86-64.so.2
+7f8f1e3e8000-7f8f1e40e000 r-xp 00001000 103:05 12200072                  /usr/lib/ld-linux-x86-64.so.2
+7f8f1e40e000-7f8f1e418000 r--p 00027000 103:05 12200072                  /usr/lib/ld-linux-x86-64.so.2
+7f8f1e418000-7f8f1e41a000 r--p 00031000 103:05 12200072                  /usr/lib/ld-linux-x86-64.so.2
+7f8f1e41a000-7f8f1e41c000 rw-p 00033000 103:05 12200072                  /usr/lib/ld-linux-x86-64.so.2
+7fff7b451000-7fff7b472000 rw-p 00000000 00:00 0            <-- main thread local vars          [stack]
+7fff7b5a2000-7fff7b5a6000 r--p 00000000 00:00 0                          [vvar]
+7fff7b5a6000-7fff7b5a8000 r-xp 00000000 00:00 0                          [vdso]
+ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsyscall]
+
+
+f)
+
+strace result::
+
+execve("./thread-example-a", ["./thread-example-a"], 0x7ffd258d87f0 /* 62 vars */) = 0
+brk(NULL)                               = 0x55ec84e20000
+arch_prctl(0x3001 /* ARCH_??? */, 0x7ffd8c3502b0) = -1 EINVAL (Invalid argument)
+access("/etc/ld.so.preload", R_OK)      = -1 ENOENT (No such file or directory)
+openat(AT_FDCWD, "/etc/ld.so.cache", O_RDONLY|O_CLOEXEC) = 3
+newfstatat(3, "", {st_mode=S_IFREG|0644, st_size=148875, ...}, AT_EMPTY_PATH) = 0
+mmap(NULL, 148875, PROT_READ, MAP_PRIVATE, 3, 0) = 0x7fdb59495000
+close(3)                                = 0
+openat(AT_FDCWD, "/usr/lib/libc.so.6", O_RDONLY|O_CLOEXEC) = 3
+read(3, "\177ELF\2\1\1\3\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0\220~\2\0\0\0\0\0"..., 832) = 832
+pread64(3, "\6\0\0\0\4\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0"..., 784, 64) = 784
+newfstatat(3, "", {st_mode=S_IFREG|0755, st_size=2366624, ...}, AT_EMPTY_PATH) = 0
+mmap(NULL, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7fdb59493000
+pread64(3, "\6\0\0\0\4\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0"..., 784, 64) = 784
+mmap(NULL, 2411920, PROT_READ, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7fdb59200000
+mmap(0x7fdb59226000, 1437696, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x26000) = 0x7fdb59226000
+mmap(0x7fdb59385000, 348160, PROT_READ, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x185000) = 0x7fdb59385000
+mmap(0x7fdb593da000, 417792, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x1d9000) = 0x7fdb593da000
+mmap(0x7fdb59440000, 52624, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) = 0x7fdb59440000
+close(3)                                = 0
+mmap(NULL, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7fdb59491000
+arch_prctl(ARCH_SET_FS, 0x7fdb59494680) = 0
+set_tid_address(0x7fdb59494950)         = 2953
+set_robust_list(0x7fdb59494960, 24)     = 0
+rseq(0x7fdb59494fa0, 0x20, 0, 0x53053053) = 0
+mprotect(0x7fdb593da000, 409600, PROT_READ) = 0
+mprotect(0x55ec83cba000, 4096, PROT_READ) = 0
+mprotect(0x7fdb594eb000, 8192, PROT_READ) = 0
+prlimit64(0, RLIMIT_STACK, NULL, {rlim_cur=8192*1024, rlim_max=RLIM64_INFINITY}) = 0
+munmap(0x7fdb59495000, 148875)          = 0
+gettid()                                = 2953
+getppid()                               = 2950
+getpid()                                = 2953
+newfstatat(1, "", {st_mode=S_IFCHR|0620, st_rdev=makedev(0x88, 0x1), ...}, AT_EMPTY_PATH) = 0
+getrandom("\x57\x23\x35\x4e\x73\x84\x8e\x15", 8, GRND_NONBLOCK) = 8
+brk(NULL)                               = 0x55ec84e20000
+brk(0x55ec84e41000)                     = 0x55ec84e41000
+write(1, "main [pid:2953 parent-pid:2950 t"..., 72main [pid:2953 parent-pid:2950 thread-group-pid:2953]: Hello from main!
+) = 72
+rt_sigaction(SIGRT_1, {sa_handler=0x7fdb59289d10, sa_mask=[], sa_flags=SA_RESTORER|SA_ONSTACK|SA_RESTART|SA_SIGINFO, sa_restorer=0x7fdb5923e710}, NULL, 8) = 0
+rt_sigprocmask(SIG_UNBLOCK, [RTMIN RT_1], NULL, 8) = 0
+
+выделяем стек для нового треда:
+mmap(NULL, 8392704, PROT_NONE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_STACK, -1, 0) = 0x7fdb589ff000
+
+mprotect(0x7fdb58a00000, 8388608, PROT_READ|PROT_WRITE) = 0
+rt_sigprocmask(SIG_BLOCK, ~[], [], 8)   = 0
+
+клонируем процесс:
+clone3({flags=CLONE_VM|CLONE_FS|CLONE_FILES|CLONE_SIGHAND|CLONE_THREAD|CLONE_SYSVSEM|CLONE_SETTLS|CLONE_PARENT_SETTID|CLONE_CHILD_CLEARTID, child_tid=0x7fdb591ff990, parent_tid=0x7fdb591ff990, exit_signal=0, stack=0x7fdb589ff000, stack_size=0x7fff80, tls=0x7fdb591ff6c0} => {parent_tid=[2954]}, 88) = 2954
+
+mythread [pid:2953 parent-pid:2950 thread-group-pid:2954]: Hello from mythread!
+rt_sigprocmask(SIG_SETMASK, [], NULL, 8) = 0
+openat(AT_FDCWD, "/etc/ld.so.cache", O_RDONLY|O_CLOEXEC) = 3
+newfstatat(3, "", {st_mode=S_IFREG|0644, st_size=148875, ...}, AT_EMPTY_PATH) = 0
+mmap(NULL, 148875, PROT_READ, MAP_PRIVATE, 3, 0) = 0x7fdb59495000
+close(3)                                = 0
+openat(AT_FDCWD, "/usr/lib/libgcc_s.so.1", O_RDONLY|O_CLOEXEC) = 3
+read(3, "\177ELF\2\1\1\0\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0\0\0\0\0\0\0\0\0"..., 832) = 832
+newfstatat(3, "", {st_mode=S_IFREG|0644, st_size=728120, ...}, AT_EMPTY_PATH) = 0
+mmap(NULL, 147912, PROT_READ, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7fdb5946c000
+mmap(0x7fdb59470000, 110592, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x4000) = 0x7fdb59470000
+mmap(0x7fdb5948b000, 16384, PROT_READ, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x1f000) = 0x7fdb5948b000
+mmap(0x7fdb5948f000, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x22000) = 0x7fdb5948f000
+close(3)                                = 0
+mprotect(0x7fdb5948f000, 4096, PROT_READ) = 0
+munmap(0x7fdb59495000, 148875)          = 0
+futex(0x7fdb59490070, FUTEX_WAKE_PRIVATE, 2147483647) = 0
+exit_group(0)                           = ?
++++ exited with 0 +++
