@@ -46,7 +46,7 @@ main: pthread_create() failed: Resource temporarily unavailable
 EAGAIN Insufficient resources to create another thread.
  the limit you're hitting is lack of virtual memory
 
-Я думаю заканчивается виртуальная память для выделения стека для нового потока.
+Заканчивается виртуальная память для выделения стека для нового потока.
 Т к треды по умолчанию типа join, т е они не высвобождают ресурсы после завершения,
 и ждут, когда главный тред соберёт данные.
 

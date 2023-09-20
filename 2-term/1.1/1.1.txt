@@ -38,6 +38,9 @@ a)
 Эта функция позволяет запущенным потокам продолжить исполнение, 
 даже если главный поток завершился.
 
+"To allow other threads to continue execution, the main thread
+should terminate by calling pthread_exit() rather than exit(3)"
+
 c)
 
 pthread_t is the data type used to uniquely identify a thread.
@@ -67,7 +70,7 @@ local_static_var == ??
 d) 
 
 global_var == видны, т к переменная лежит в общей памяти
-local_vars == если менять поменять указатель, то поменяется значение,
+local_vars == если менять указатель, то поменяется значение,
 т к указатель теперь указывает на другую область памяти,
 а если менять разыменовывая указатель, то значения изменятся.
 
@@ -155,6 +158,7 @@ rt_sigprocmask(SIG_BLOCK, ~[], [], 8)   = 0
 clone3({flags=CLONE_VM|CLONE_FS|CLONE_FILES|CLONE_SIGHAND|CLONE_THREAD|CLONE_SYSVSEM|CLONE_SETTLS|CLONE_PARENT_SETTID|CLONE_CHILD_CLEARTID, child_tid=0x7fdb591ff990, parent_tid=0x7fdb591ff990, exit_signal=0, stack=0x7fdb589ff000, stack_size=0x7fff80, tls=0x7fdb591ff6c0} => {parent_tid=[2954]}, 88) = 2954
 
 mythread [pid:2953 parent-pid:2950 thread-group-pid:2954]: Hello from mythread!
+
 rt_sigprocmask(SIG_SETMASK, [], NULL, 8) = 0
 openat(AT_FDCWD, "/etc/ld.so.cache", O_RDONLY|O_CLOEXEC) = 3
 newfstatat(3, "", {st_mode=S_IFREG|0644, st_size=148875, ...}, AT_EMPTY_PATH) = 0

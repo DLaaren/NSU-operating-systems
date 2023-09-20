@@ -1,11 +1,11 @@
 TARGET1 = thread-example-a
-SRCS1 = thread.c
+SRCS1 = threads-a.c
 
 TARGET2 = thread-example-b
-SRCS2 = thread-b.c
+SRCS2 = threads-b.c
 
 TARGET3 = thread-example-c
-SRCS3 = thread-c.c
+SRCS3 = threads-c.c
 
 CC=gcc
 RM=rm
