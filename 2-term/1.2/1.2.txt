@@ -16,6 +16,11 @@ until some other thread calls pthread_join() with its ID.
 pthread_join() is a blocking call, it will block the calling thread until 
 the other thread ends.
 
+
+       The value pointed to by retval should not be located on the
+       calling thread's stack, since the contents of that stack are
+       undefined after the thread terminates.
+
 c)
 
 Если строка выделяется на стеке, то при возвращении указателя из потока,

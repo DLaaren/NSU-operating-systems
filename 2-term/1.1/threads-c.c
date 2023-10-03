@@ -13,7 +13,6 @@ void *mythread(void *v) {
             getpid(), getppid(), gettid(), pthread_self());
 
     printf("var address from thread:%p\n\n", &v);
-    sleep(120);
 	return NULL;
 }
 
@@ -34,8 +33,6 @@ int main() {
 
     printf("from main\nlocal_var:%p\nlocal_const_var:%p\nlocal_static_var:%p\nglobal_var:%p\n\n",
             &local_var, &local_const_var, &local_static_var, &global_var);
-
-    sleep(120);
 
 	pthread_exit(NULL);
 }

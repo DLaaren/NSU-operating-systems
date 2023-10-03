@@ -192,6 +192,55 @@ exit(0)                                 = ?
 +++ killed by SIGSEGV (core dumped) +++
 Segmentation fault (core dumped)
 
+without pthread_exit() in main :
+
+execve("./threads-b", ["./threads-b"], 0x7ffdd2b09d80 /* 63 vars */) = 0
+brk(NULL)                               = 0x558a3f3b2000
+arch_prctl(0x3001 /* ARCH_??? */, 0x7ffe5ac58f50) = -1 EINVAL (Invalid argument)
+access("/etc/ld.so.preload", R_OK)      = -1 ENOENT (No such file or directory)
+openat(AT_FDCWD, "/etc/ld.so.cache", O_RDONLY|O_CLOEXEC) = 3
+newfstatat(3, "", {st_mode=S_IFREG|0644, st_size=150159, ...}, AT_EMPTY_PATH) = 0
+mmap(NULL, 150159, PROT_READ, MAP_PRIVATE, 3, 0) = 0x7f485368b000
+close(3)                                = 0
+openat(AT_FDCWD, "/usr/lib/libc.so.6", O_RDONLY|O_CLOEXEC) = 3
+read(3, "\177ELF\2\1\1\3\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0\220~\2\0\0\0\0\0"..., 832) = 832
+pread64(3, "\6\0\0\0\4\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0"..., 784, 64) = 784
+newfstatat(3, "", {st_mode=S_IFREG|0755, st_size=2366624, ...}, AT_EMPTY_PATH) = 0
+mmap(NULL, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f4853689000
+pread64(3, "\6\0\0\0\4\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0"..., 784, 64) = 784
+mmap(NULL, 2411920, PROT_READ, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7f4853400000
+mmap(0x7f4853426000, 1437696, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x26000) = 0x7f4853426000
+mmap(0x7f4853585000, 348160, PROT_READ, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x185000) = 0x7f4853585000
+mmap(0x7f48535da000, 417792, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x1d9000) = 0x7f48535da000
+mmap(0x7f4853640000, 52624, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) = 0x7f4853640000
+close(3)                                = 0
+mmap(NULL, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f4853687000
+arch_prctl(ARCH_SET_FS, 0x7f485368a680) = 0
+set_tid_address(0x7f485368a950)         = 8778
+set_robust_list(0x7f485368a960, 24)     = 0
+rseq(0x7f485368afa0, 0x20, 0, 0x53053053) = 0
+mprotect(0x7f48535da000, 409600, PROT_READ) = 0
+mprotect(0x558a3da02000, 4096, PROT_READ) = 0
+mprotect(0x7f48536e1000, 8192, PROT_READ) = 0
+prlimit64(0, RLIMIT_STACK, NULL, {rlim_cur=8192*1024, rlim_max=RLIM64_INFINITY}) = 0
+munmap(0x7f485368b000, 150159)          = 0
+getrandom("\x0e\xed\x05\xed\xe1\xbb\x2c\x66", 8, GRND_NONBLOCK) = 8
+brk(NULL)                               = 0x558a3f3b2000
+brk(0x558a3f3d3000)                     = 0x558a3f3d3000
+newfstatat(1, "", {st_mode=S_IFCHR|0620, st_rdev=makedev(0x88, 0), ...}, AT_EMPTY_PATH) = 0
+write(1, "struct fields : \"10\" and \"my str"..., 37struct fields : "10" and "my string"
+) = 37
+rt_sigaction(SIGRT_1, {sa_handler=0x7f4853489d10, sa_mask=[], sa_flags=SA_RESTORER|SA_ONSTACK|SA_RESTART|SA_SIGINFO, sa_restorer=0x7f485343e710}, NULL, 8) = 0
+rt_sigprocmask(SIG_UNBLOCK, [RTMIN RT_1], NULL, 8) = 0
+mmap(NULL, 8392704, PROT_NONE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_STACK, -1, 0) = 0x7f4852bff000
+mprotect(0x7f4852c00000, 8388608, PROT_READ|PROT_WRITE) = 0
+rt_sigprocmask(SIG_BLOCK, ~[], [], 8)   = 0
+clone3({flags=CLONE_VM|CLONE_FS|CLONE_FILES|CLONE_SIGHAND|CLONE_THREAD|CLONE_SYSVSEM|CLONE_SETTLS|CLONE_PARENT_SETTID|CLONE_CHILD_CLEARTID, child_tid=0x7f48533ff990, parent_tid=0x7f48533ff990, exit_signal=0, stack=0x7f4852bff000, stack_size=0x7fff80, tls=0x7f48533ff6c0}got struct with fields : "10" and "my string"
+ => {parent_tid=[8779]}, 88) = 8779
+rt_sigprocmask(SIG_SETMASK, [], NULL, 8) = 0
+exit_group(0)                           = ?
++++ exited with 0 +++
+
 
 
 Так-с оказывается главный поток освобождает ресурсы самым последним (даже если он уже завершился),

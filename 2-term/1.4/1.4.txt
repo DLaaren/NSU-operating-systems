@@ -1,0 +1,42 @@
+a) 
+pthread_cancel остановила поток, но не сразу
+
+б) 
+pthread_cancel не остановила поток
+т к 
+
+Функция pthread_cancel посылает потоку запрос на остановку
+Реакция от потока на этот запрос зависит от двух атрибутов : state и type
+Настраивается с помощью pthread_setcancelstate (enable by default) 
+и pthread_setcanceltype (deffered by default)
+
+Since the thread could be canceled at any time,
+it cannot safely reserve resources (e.g., allocating memory with
+malloc(3)), acquire mutexes, semaphores, or locks, and so on.
+Reserving resources is unsafe because the application has no way
+of knowing what the state of these resources is when the thread
+is canceled;
+
+Asynchronous cancelability means
+that the thread can be canceled at any time (usually immediately,
+but the system does not guarantee this).  Deferred cancelability
+means that cancelation will be delayed until the thread next
+calls a function that is a cancelation point.  A list of
+functions that are or may be cancelation points is provided in
+pthreads(7).
+
+c)
+A clean-up handler is a function
+that is automatically executed when a thread is canceled (or in
+various other circumstances described below); it might, for
+example, unlock a mutex so that it becomes available to other
+threads in the process.
+
+
+The pthread_cleanup_push() function pushes routine onto the top
+of the stack of clean-up handlers.  When routine is later
+invoked, it will be given arg as its argument.
+
+The pthread_cleanup_pop() function removes the routine at the top
+of the stack of clean-up handlers, and optionally executes it if
+execute is nonzero.

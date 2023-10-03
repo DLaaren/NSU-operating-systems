@@ -19,7 +19,7 @@ void *mythread2(void *my_arg) {
 
 void *mythread(void *my_arg) {
 	printf("got struct with fields : \"%d\" and \"%s\"\n", ((arg*)my_arg)->num, ((arg*)my_arg)->string);
-	
+
 	pthread_t tid;
 	int err;
     pthread_attr_t attr;
