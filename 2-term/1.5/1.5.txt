@@ -1,0 +1,2 @@
+signal is a per process call, not a per thread one, 
+if you call it it sets the handler for all threads in the process.
