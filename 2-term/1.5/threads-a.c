@@ -10,11 +10,11 @@
 void *mythread1(void *args) {
     sigset_t mask;
     sigfillset(&mask);
-    pthread_sigmask(SIG_BLOCK, &mask, NULL);
+    //pthread_sigmask(SIG_BLOCK, &mask, NULL);
     printf("Hello from mythread 1!\n");
 
     sleep(2);
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 10000; i++) {
         sleep(1);
         printf("thread 1 is still working : %d\n", i);
     }
@@ -79,7 +79,7 @@ int main() {
     }
 
     sleep(1);
-    pthread_kill(tid3, SIGQUIT);
+    pthread_kill(tid3, SIGINT);
     // pthread_kill(tid3, SIGINT); //call handler for SIGINT
 
     sleep (1);

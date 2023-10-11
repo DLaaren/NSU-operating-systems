@@ -69,7 +69,6 @@ int mythread_startup(void *arg) {
     }
 
     mythread->retval = retval;
-    // mythread->isFinished = 1;
 
     printf("thread_startup() : waiting for a mythread_join() for thread %d\n", mythread->mythread_id);
 
@@ -89,10 +88,6 @@ int mythread_startup(void *arg) {
             exit(-1);
         }
     }
-
-    /*while (!mythread->isJoined) {
-        sleep(1);
-    }*/
 
     printf("thread_startup() : the thread function finished for thread %d\n", mythread->mythread_id);
     return 0;
@@ -178,10 +173,6 @@ int mythread_join(mythread_t mytid, void **retval) {
         }
     }
 
-    // while (!mythread->isFinished) {
-    //     sleep(1);
-    // }
-
     uint32_t *futex2 = &(mythread->isJoined);
     while (1) {
         s = syscall(SYS_futex, futex2, FUTEX_WAKE, 1, NULL);
@@ -198,7 +189,6 @@ int mythread_join(mythread_t mytid, void **retval) {
     printf("mythread_join() : thread %d finished\n", mythread->mythread_id);
     
     *retval = mythread->retval;
-    // mythread->isJoined = 1;
     return 0;
 }
 

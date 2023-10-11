@@ -12,7 +12,9 @@ void *mythread(void *args) {
     //     printf("main: pthread_setcanceltype() failed: %s\n", strerror(err));
 	// 	return NULL;
     // }
-    for (int i = 0; ; i++) {}
+    for (int i = 0; ; i++) {
+        pthread_testcancel();
+    }
 }
 
 int main() {
@@ -24,6 +26,8 @@ int main() {
         printf("main: pthread_create() failed: %s\n", strerror(err));
 		return -1;
     }
+
+    sleep(1);
 
     err = pthread_cancel(tid);
     if (err) {
