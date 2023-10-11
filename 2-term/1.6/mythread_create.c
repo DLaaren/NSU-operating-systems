@@ -16,13 +16,18 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <sys/wait.h>
+#include <linux/futex.h>
+#include <sys/syscall.h> 
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdint.h>
+
+#define RED "\033[41m"
+#define NOCOLOR "\033[0m"
 
 #define CLONE_MYTHREAD_FLAGS (CLONE_VM | CLONE_FILES | CLONE_THREAD | CLONE_SIGHAND | SIGCHLD)
 
 #define PAGE_SIZE 4096
-// #define STACK_SIZE getrlimit(RLIMIT_STACK, &limit)
 #define STACK_SIZE 3*PAGE_SIZE
 
 typedef void *(*start_routine_t)(void*);
@@ -33,13 +38,8 @@ typedef struct mythread_s {
     void *arg;
     void *retval;
 
-    volatile int isFinished;
-    volatile int isJoined;
-
-    // sigmask
-    // *stack_base
-    // stack size
-    // recieved signal
+    uint32_t isFinished;
+    uint32_t isJoined;
 } mythread_s;
 
 typedef mythread_s* mythread_t;
@@ -49,19 +49,50 @@ int mythread_startup(void *arg) {
     mythread_t tid = (mythread_t)arg;
     mythread_s *mythread = tid;
     void *retval;
+    int s;
 
     printf("thread_startup() : starting a thread function for thread %d\n", mythread->mythread_id);
     
     retval = mythread->start_routine(mythread->arg);
 
+    uint32_t *futex1 = &(mythread->isFinished);
+    while (1) {
+        s = syscall(SYS_futex, futex1, FUTEX_WAKE, 1, NULL);
+        if (s == -1) {
+            printf(RED"mythread_startup() failed on futex_wake %s\n"NOCOLOR, strerror(errno));
+            exit(-1);
+        } else {
+            mythread->isFinished = 1;
+            printf("mythread %d has finished; isFinished = %d\n", mythread->mythread_id, mythread->isFinished);
+            break;
+        }
+    }
+
     mythread->retval = retval;
-    mythread->isFinished = 1;
+    // mythread->isFinished = 1;
 
     printf("thread_startup() : waiting for a mythread_join() for thread %d\n", mythread->mythread_id);
 
-    while (!mythread->isJoined) {
-        sleep(1);
+    //long syscall(SYS_futex, uint32_t *uaddr, int futex_op, uint32_t val, const struct timespec *timeout);
+    uint32_t *futex2 = &(mythread->isJoined);
+    while (1) {
+        s = syscall(SYS_futex, futex2, FUTEX_WAIT, 0, NULL);
+        if (s == -1 && errno != EAGAIN) {
+            printf(RED"mythread_startup() failed on futex_wait %s\n"NOCOLOR, strerror(errno));
+            exit(-1);
+        }
+        else if (s == 0) {
+            if (*futex2 == 1) {
+                break;
+            }
+        } else {
+            exit(-1);
+        }
     }
+
+    /*while (!mythread->isJoined) {
+        sleep(1);
+    }*/
 
     printf("thread_startup() : the thread function finished for thread %d\n", mythread->mythread_id);
     return 0;
@@ -102,7 +133,6 @@ int mythread_create(mythread_t *mytid, void *(*start_routine)(void *), void *arg
     mprotect(mythread_stack + PAGE_SIZE, STACK_SIZE - PAGE_SIZE, PROT_READ | PROT_WRITE);
 
     memset(mythread_stack + PAGE_SIZE, 0x7f, STACK_SIZE - PAGE_SIZE);
-
     mythread = (mythread_s *)(mythread_stack + STACK_SIZE - sizeof(mythread_s));
     mythread->mythread_id = thread_id;
     mythread->start_routine = start_routine;
@@ -117,7 +147,7 @@ int mythread_create(mythread_t *mytid, void *(*start_routine)(void *), void *arg
 
     child_pid = clone(mythread_startup, mythread_stack, CLONE_MYTHREAD_FLAGS, mythread);
     if (child_pid == -1) {
-        printf("clone() failed: %s\n", strerror(errno));
+        printf(RED"clone() failed: %s\n"NOCOLOR, strerror(errno));
         exit(-1);
     }
     
@@ -127,23 +157,54 @@ int mythread_create(mythread_t *mytid, void *(*start_routine)(void *), void *arg
 
 int mythread_join(mythread_t mytid, void **retval) {
     mythread_s *mythread = mytid;
+    int s;
 
     printf("mythread_join() : waiting for thread %d to finish\n", mythread->mythread_id);
 
-    while (!mythread->isFinished) {
-        sleep(1);
+    uint32_t *futex1 = &(mythread->isFinished);
+    //long syscall(SYS_futex, uint32_t *uaddr, int futex_op, uint32_t val, const struct timespec *timeout);
+    while (1) {
+        s = syscall(SYS_futex, futex1, FUTEX_WAIT, 0, NULL);
+        if (s == -1 && errno != EAGAIN) {
+            printf(RED"mythread_join() failed on futex_wait %s\n"NOCOLOR, strerror(errno));
+            exit(-1);
+        }
+        else if (s == 0) {
+            if (*futex1 == 1) {
+                break;
+            }
+        } else {
+            exit(-1);
+        }
+    }
+
+    // while (!mythread->isFinished) {
+    //     sleep(1);
+    // }
+
+    uint32_t *futex2 = &(mythread->isJoined);
+    while (1) {
+        s = syscall(SYS_futex, futex2, FUTEX_WAKE, 1, NULL);
+        if (s == -1) {
+            printf(RED"mythread_join() failed on futex_wake %s\n"NOCOLOR, strerror(errno));
+            exit(-1);
+        } else {
+            mythread->isJoined = 1;
+            printf("mythread %d has joined; isJoined = %d\n", mythread->mythread_id, mythread->isJoined);
+            break;
+        }
     }
 
     printf("mythread_join() : thread %d finished\n", mythread->mythread_id);
     
     *retval = mythread->retval;
-    mythread->isJoined = 1;
+    // mythread->isJoined = 1;
     return 0;
 }
 
 void *mythread_func(void *arg) {
     char *str = (char *)arg;
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 6; i++) {
         printf("msg: %s\n", str);
         sleep(1);
     }
@@ -161,7 +222,7 @@ int main() {
 
     mythread_join(mytid, &retval);
 
-    printf("[main pid:%d ppid:%d tid:%d]\nmyhread returned: %s\n", getpid(), getppid(), gettid(), (char *)retval);
+    printf("[main pid:%d ppid:%d tid:%d]; myhread returned: %s\n", getpid(), getppid(), gettid(), (char *)retval);
 
     return 0;
 }
