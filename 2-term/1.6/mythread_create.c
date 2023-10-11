@@ -59,7 +59,7 @@ int mythread_startup(void *arg) {
     while (1) {
         s = syscall(SYS_futex, futex1, FUTEX_WAKE, 1, NULL);
         if (s == -1) {
-            printf(RED"mythread_startup() failed on futex_wake %s\n"NOCOLOR, strerror(errno));
+            printf(RED"mythread_startup() failed on futex_wake %s"NOCOLOR"\n", strerror(errno));
             exit(-1);
         } else {
             mythread->isFinished = 1;
@@ -78,7 +78,7 @@ int mythread_startup(void *arg) {
     while (1) {
         s = syscall(SYS_futex, futex2, FUTEX_WAIT, 0, NULL);
         if (s == -1 && errno != EAGAIN) {
-            printf(RED"mythread_startup() failed on futex_wait %s\n"NOCOLOR, strerror(errno));
+            printf(RED"mythread_startup() failed on futex_wait %s"NOCOLOR"\n", strerror(errno));
             exit(-1);
         }
         else if (s == 0) {
@@ -147,7 +147,7 @@ int mythread_create(mythread_t *mytid, void *(*start_routine)(void *), void *arg
 
     child_pid = clone(mythread_startup, mythread_stack, CLONE_MYTHREAD_FLAGS, mythread);
     if (child_pid == -1) {
-        printf(RED"clone() failed: %s\n"NOCOLOR, strerror(errno));
+        printf(RED"clone() failed: %s"NOCOLOR"\n", strerror(errno));
         exit(-1);
     }
     
@@ -166,7 +166,7 @@ int mythread_join(mythread_t mytid, void **retval) {
     while (1) {
         s = syscall(SYS_futex, futex1, FUTEX_WAIT, 0, NULL);
         if (s == -1 && errno != EAGAIN) {
-            printf(RED"mythread_join() failed on futex_wait %s\n"NOCOLOR, strerror(errno));
+            printf(RED"mythread_join() failed on futex_wait %s"NOCOLOR"\n", strerror(errno));
             exit(-1);
         }
         else if (s == 0) {
@@ -186,7 +186,7 @@ int mythread_join(mythread_t mytid, void **retval) {
     while (1) {
         s = syscall(SYS_futex, futex2, FUTEX_WAKE, 1, NULL);
         if (s == -1) {
-            printf(RED"mythread_join() failed on futex_wake %s\n"NOCOLOR, strerror(errno));
+            printf(RED"mythread_join() failed on futex_wake %s"NOCOLOR"\n", strerror(errno));
             exit(-1);
         } else {
             mythread->isJoined = 1;
