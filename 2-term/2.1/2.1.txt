@@ -1,0 +1,168 @@
+a) 
+main: [pid : 11617; ppid : 2827; tid : 11617]
+
+ok 1: add value 0
+queue stats: current size 1;
+attempts: (add_attempts: 1; get_attempts: 0; add_attempts - get_attempts: 1);
+counts (add_count: 1; get_count: 0; add_count - get_count: 1)
+
+ok 1: add value 1
+queue stats: current size 2;
+attempts: (add_attempts: 2; get_attempts: 0; add_attempts - get_attempts: 2);
+counts (add_count: 2; get_count: 0; add_count - get_count: 2)
+
+ok 1: add value 2
+queue stats: current size 3;
+attempts: (add_attempts: 3; get_attempts: 0; add_attempts - get_attempts: 3);
+counts (add_count: 3; get_count: 0; add_count - get_count: 3)
+
+ok 1: add value 3
+queue stats: current size 4;
+attempts: (add_attempts: 4; get_attempts: 0; add_attempts - get_attempts: 4);
+counts (add_count: 4; get_count: 0; add_count - get_count: 4)
+
+ok 1: add value 4
+queue stats: current size 5;
+attempts: (add_attempts: 5; get_attempts: 0; add_attempts - get_attempts: 5);
+counts (add_count: 5; get_count: 0; add_count - get_count: 5)
+
+ok 1: add value 5
+queue stats: current size 6;
+attempts: (add_attempts: 6; get_attempts: 0; add_attempts - get_attempts: 6);
+counts (add_count: 6; get_count: 0; add_count - get_count: 6)
+
+ok 1: add value 6
+queue stats: current size 7;
+attempts: (add_attempts: 7; get_attempts: 0; add_attempts - get_attempts: 7);
+counts (add_count: 7; get_count: 0; add_count - get_count: 7)
+
+ok 1: add value 7
+queue stats: current size 8;
+attempts: (add_attempts: 8; get_attempts: 0; add_attempts - get_attempts: 8);
+counts (add_count: 8; get_count: 0; add_count - get_count: 8)
+
+ok 1: add value 8
+queue stats: current size 9;
+attempts: (add_attempts: 9; get_attempts: 0; add_attempts - get_attempts: 9);
+counts (add_count: 9; get_count: 0; add_count - get_count: 9)
+
+ok 1: add value 9
+queue stats: current size 10;
+attempts: (add_attempts: 10; get_attempts: 0; add_attempts - get_attempts: 10);
+counts (add_count: 10; get_count: 0; add_count - get_count: 10)
+
+ok: 1: get value 0
+queue stats: current size 9;
+attempts: (add_attempts: 10; get_attempts: 1; add_attempts - get_attempts: 9);
+counts (add_count: 10; get_count: 1; add_count - get_count: 9)
+
+ok: 1: get value 1
+queue stats: current size 8;
+attempts: (add_attempts: 10; get_attempts: 2; add_attempts - get_attempts: 8);
+counts (add_count: 10; get_count: 2; add_count - get_count: 8)
+
+ok: 1: get value 2
+queue stats: current size 7;
+attempts: (add_attempts: 10; get_attempts: 3; add_attempts - get_attempts: 7);
+counts (add_count: 10; get_count: 3; add_count - get_count: 7)
+
+ok: 1: get value 3
+queue stats: current size 6;
+attempts: (add_attempts: 10; get_attempts: 4; add_attempts - get_attempts: 6);
+counts (add_count: 10; get_count: 4; add_count - get_count: 6)
+
+ok: 1: get value 4
+queue stats: current size 5;
+attempts: (add_attempts: 10; get_attempts: 5; add_attempts - get_attempts: 5);
+counts (add_count: 10; get_count: 5; add_count - get_count: 5)
+
+ok: 1: get value 5
+queue stats: current size 4;
+attempts: (add_attempts: 10; get_attempts: 6; add_attempts - get_attempts: 4);
+counts (add_count: 10; get_count: 6; add_count - get_count: 4)
+
+ok: 1: get value 6
+queue stats: current size 3;
+attempts: (add_attempts: 10; get_attempts: 7; add_attempts - get_attempts: 3);
+counts (add_count: 10; get_count: 7; add_count - get_count: 3)
+
+ok: 1: get value 7
+queue stats: current size 2;
+attempts: (add_attempts: 10; get_attempts: 8; add_attempts - get_attempts: 2);
+counts (add_count: 10; get_count: 8; add_count - get_count: 2)
+
+ok: 1: get value 8
+queue stats: current size 1;
+attempts: (add_attempts: 10; get_attempts: 9; add_attempts - get_attempts: 1);
+counts (add_count: 10; get_count: 9; add_count - get_count: 1)
+
+ok: 1: get value 9
+queue stats: current size 0;
+attempts: (add_attempts: 10; get_attempts: 10; add_attempts - get_attempts: 0);
+counts (add_count: 10; get_count: 10; add_count - get_count: 0)
+
+ok: 0: get value -1
+queue stats: current size 0;
+attempts: (add_attempts: 10; get_attempts: 11; add_attempts - get_attempts: -1);
+counts (add_count: 10; get_count: 10; add_count - get_count: 0)
+
+ok: 0: get value -1
+queue stats: current size 0;
+attempts: (add_attempts: 10; get_attempts: 12; add_attempts - get_attempts: -2);
+counts (add_count: 10; get_count: 10; add_count - get_count: 0)
+
+
+b)
+
+main [pid : 13592; ppid : 2827; tid : 13592]
+qmonitor: [pid : 13592; pprid : 2827; tid : 13593]
+queue stats: current size 0;
+attempts: (add_attempts: 0; get_attempts: 0; add_attempts - get_attempts: 0);
+counts (add_count: 0; get_count: 0; add_count - get_count: 0)
+
+reader [pid : 13592; ppid : 2827; tid : 13594]
+writer [pid : 13592; ppid : 2827; tid : 13595]
+set_cpu: set cpu 1
+set_cpu: set cpu 1
+queue stats: current size 955983;
+attempts: (add_attempts: 23123317; get_attempts: 28014392; add_attempts - get_attempts: -4891075);
+counts (add_count: 20464749; get_count: 19508766; add_count - get_count: 955983)
+
+queue stats: current size 640465;
+attempts: (add_attempts: 46798260; get_attempts: 53038535; add_attempts - get_attempts: -6240275);
+counts (add_count: 43322787; get_count: 42317802; add_count - get_count: 1004985)
+
+queue stats: current size 482186;
+attempts: (add_attempts: 74243420; get_attempts: 81362998; add_attempts - get_attempts: -7119578);
+counts (add_count: 69997877; get_count: 69151171; add_count - get_count: 846706)
+
+queue stats: current size 440518;
+attempts: (add_attempts: 103508966; get_attempts: 112134241; add_attempts - get_attempts: -8625275);
+counts (add_count: 95709377; get_count: 93969554; add_count - get_count: 1739823)
+
+queue stats: current size 483399;
+attempts: (add_attempts: 130561613; get_attempts: 163673181; add_attempts - get_attempts: -33111568);
+counts (add_count: 122762024; get_count: 118906330; add_count - get_count: 3855694)
+
+queue stats: current size 177558;
+attempts: (add_attempts: 158897418; get_attempts: 205276846; add_attempts - get_attempts: -46379428);
+counts (add_count: 151097829; get_count: 146973428; add_count - get_count: 4124401)
+
+...
+
+
+i.
+Выпал segfault  --- а вот тут хз
+ERROR: get value is 19967749 but expected - 19967748    ---  программа пердполагала ситуацию, что одно число записали и тут же его счтиали, а у нас блокировок нет!!
+
+
+ii. 
+
+1) queue_init(1000000) : 
+   queue_init(1000) :
+
+2) set_cpu(x) && set_cpu(x) : работает как обычно
+   set_cpu(x) && set_cpu(y) : segfault
+
+3) without shed_yield() :
+   with shed_yield() : 

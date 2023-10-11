@@ -1,0 +1,40 @@
+source code of pthread_create :: https://fossies.org/dox/pthreads-3.14/pthread_8c_source.html#l00465
+
+Kernel threads
+
+A kernel thread is a "lightweight" unit of kernel scheduling. At least one kernel thread exists within each process. 
+If multiple kernel threads exist within a process, then they share the same memory and file resources. 
+Kernel threads are preemptively multitasked if the operating system's process scheduler is preemptive. 
+Kernel threads do not own resources except for a stack, a copy of the registers including the program counter, and thread-local storage (if any), 
+and are thus relatively cheap to create and destroy. Thread switching is also relatively cheap: 
+it requires a context switch (saving and restoring registers and stack pointer), but does not change virtual memory and is thus cache-friendly (leaving TLB valid). 
+The kernel can assign one thread to each logical core in a system (because each processor splits itself up into multiple logical cores if it 
+supports multithreading, or only supports one logical core per physical core if it does not), and can swap out threads that get blocked. 
+However, kernel threads take much longer than user threads to be swapped.
+
+
+User threads
+
+Threads are sometimes implemented in userspace libraries, thus called user threads. The kernel is unaware of them, 
+so they are managed and scheduled in userspace. Some implementations base their user threads on top of several kernel threads, 
+to benefit from multi-processor machines (M:N model). User threads as implemented by virtual machines are also called green threads.
+
+As user thread implementations are typically entirely in userspace, context switching between user threads within the same process is 
+extremely efficient because it does not require any interaction with the kernel at all: a context switch can be performed by locally saving the CPU 
+registers used by the currently executing user thread or fiber and then loading the registers required by the user thread or fiber to be executed. 
+Since scheduling occurs in userspace, the scheduling policy can be more easily tailored to the requirements of the program's workload.
+
+However, the use of blocking system calls in user threads (as opposed to kernel threads) can be problematic. If a user thread or a fiber performs a system call 
+that blocks, the other user threads and fibers in the process are unable to run until the system call returns. A typical example of this problem is 
+when performing I/O: most programs are written to perform I/O synchronously. When an I/O operation is initiated, a system call is made, 
+and does not return until the I/O operation has been completed. In the intervening period, the entire process is "blocked" by the kernel and cannot run, 
+which starves other user threads and fibers in the same process from executing.
+
+A common solution to this problem (used, in particular, by many green threads implementations) is providing an I/O API that implements an interface 
+that blocks the calling thread, rather than the entire process, by using non-blocking I/O internally, and scheduling another user thread or fiber 
+while the I/O operation is in progress. Similar solutions can be provided for other blocking system calls. Alternatively, 
+the program can be written to avoid the use of synchronous I/O or other blocking system calls (in particular, using non-blocking I/O, 
+including lambda continuations and/or async/await primitives[6]). 
+
+
+Ядерный поток = код исполняется в user space, но диспетчеризируется ядром
