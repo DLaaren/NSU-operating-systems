@@ -1,0 +1,36 @@
+
+int pthread_cond_destroy(pthread_cond_t *cond);
+
+int pthread_cond_init(pthread_cond_t *restrict cond,
+const pthread_condattr_t *restrict attr);
+
+pthread_cond_t cond = PTHREAD_COND_INITIALIZER; 
+
+int pthread_cond_timedwait(pthread_cond_t *restrict cond,
+pthread_mutex_t *restrict mutex,
+const struct timespec *restrict abstime);
+
+int pthread_cond_wait(pthread_cond_t *restrict cond,
+pthread_mutex_t *restrict mutex); 
+
+int pthread_cond_broadcast(pthread_cond_t *cond);
+
+int pthread_cond_signal(pthread_cond_t *cond); 
+
+https://stackoverflow.com/questions/16522858/understanding-of-pthread-cond-wait-and-pthread-cond-signal
+The common use of condition vars is something like:
+
+thread 1:
+    pthread_mutex_lock(&mutex);
+    while (!condition)
+        pthread_cond_wait(&cond, &mutex); // blocking 
+    /* do something that requires holding the mutex and condition is true */
+    pthread_mutex_unlock(&mutex);
+
+thread2:
+    pthread_mutex_lock(&mutex);
+    /* do something that might make condition true */
+    pthread_cond_signal(&cond);
+    pthread_mutex_unlock(&mutex);
+
+    
