@@ -1,3 +1,24 @@
+Мьютекс, передаваемый функции pthread_cond_wait, защищает доступ к
+переменной состояния. Вызывающий поток передает его функции в запертом
+состоянии, а функция атомарно помещает вызывающий поток в список
+потоков, ожидающих изменения состояния переменной, и отпирает мьютекс.
+Это исключает вероятность, что переменная изменит состояние между
+моментом ее проверки и моментом приостановки потока, благодаря чему поток
+не пропустит наступление ожидаемого события.
+Когда функция pthread_cond_wait возвращает управление, мьютекс снова
+запирается.
+Для передачи сообщения о наступлении события существуют две функции.
+Функция pthread_cond_signal возобновит работу одного потока, ожидающего
+наступления события.
+
+чтобы послать сигнал ожидающим потокам, запирать мьютекс не нужно
+
+The pthread_cond_timedwait() and pthread_cond_wait() functions shall block on a condition variable. 
+They shall be called with mutex locked by the calling thread or undefined behavior results.
+
+These functions atomically release mutex and cause the calling thread to block on the condition variable cond; 
+
+
 
 int pthread_cond_destroy(pthread_cond_t *cond);
 
@@ -34,3 +55,45 @@ thread2:
     pthread_mutex_unlock(&mutex);
 
     
+    set_cpu: set cpu 1
+    set_cpu: set cpu 1
+
+    queue stats: current size 153606;
+    attempts: (add_attempts: 11767270; get_attempts: 11613665; add_attempts - get_attempts: 153605);
+    counts (add_count: 11767270; get_count: 11613664; add_count - get_count: 153606)
+
+    queue stats: current size 107730;
+    attempts: (add_attempts: 23039635; get_attempts: 22931905; add_attempts - get_attempts: 107730);
+    counts (add_count: 23039635; get_count: 22931905; add_count - get_count: 107730)
+
+    queue stats: current size 72536;
+    attempts: (add_attempts: 35385817; get_attempts: 35313281; add_attempts - get_attempts: 72536);
+    counts (add_count: 35385816; get_count: 35313280; add_count - get_count: 72536)
+    ^C
+    real	0m3.336s
+    user	0m2.235s
+    sys	0m1.090s
+
+with usleep(1);
+
+    set_cpu: set cpu 1
+    set_cpu: set cpu 1
+
+    queue stats: current size 0;
+    attempts: (add_attempts: 17436; get_attempts: 17437; add_attempts - get_attempts: -1);
+    counts (add_count: 17436; get_count: 17436; add_count - get_count: 0)
+
+    queue stats: current size 0;
+    attempts: (add_attempts: 34626; get_attempts: 34627; add_attempts - get_attempts: -1);
+    counts (add_count: 34626; get_count: 34626; add_count - get_count: 0)
+
+    queue stats: current size 0;
+    attempts: (add_attempts: 51872; get_attempts: 51873; add_attempts - get_attempts: -1);
+    counts (add_count: 51872; get_count: 51872; add_count - get_count: 0)
+    ^C
+    real	0m3.539s
+    user	0m0.099s
+    sys	0m0.264s
+
+
+загрузка ядер на 6%
