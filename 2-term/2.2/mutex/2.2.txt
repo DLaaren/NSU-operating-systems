@@ -1,0 +1,89 @@
+
+Also, another difference between spinlock and mutex is that the spinlock blocks a thread for a short period of time 
+while the mutex can block a thread for a long period of time.
+
+In spinlock, the task cannot sleep while waiting for the lock, whereas in mutex, the task can sleep while waiting for the lock.
+
+Мутексы требуют поддержки процессора (т.к. нужна атомарная операция)
+
+Также проверка if (condition) как в случае со спинлоком, 
+но здесь после неудачной проверки процесс перемещается на дно стека готовых к исполенению процессов
+
+mutex_lock:
+    TSL REGISTER,MUTEX          | копирование мьютекса в регистр и установка его в 1
+    CMP REGISTER,#0             | был ли мьютекс нулевым?
+    JZE ok                      | если он был нулевым, значит, не был
+                                | заблокирован,поэтому нужно вернуть
+                                | управление вызывающей программе
+    CALL thread_yield           | мьютекс занят; пусть планировщик
+                                | возобновит работу другого потока
+    JMP mutex lock              | повторная попытка
+    ok: RET                     | возврат управления вызывающей программе;
+                                | будет осуществлен вход в критическую
+                                | область
+mutex_unlock:
+    MOVE MUTEX,#0               | сохранение в мьютексе значения 0
+    RET
+
+
+Поскольку процедура thread_ yield представляет собой всего лишь вызов планировщика
+потоков в пользовательском пространстве, она работает очень быстро. Следовательно,
+ни mutex_lock, ни mutex_unlock не требуют никаких вызовов ядра. Благодаря их исполь-
+зованию потоки, работающие на пользовательском уровне, могут синхронизироваться
+целиком в пространстве пользователя с использованием процедур, для реализации
+которых требуется совсем небольшая группа команд.
+
+
+int pthread_mutex_destroy(pthread_mutex_t *mutex);
+int pthread_mutex_init(pthread_mutex_t *restrict mutex,
+const pthread_mutexattr_t *restrict attr);
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER; 
+
+
+
+    set_cpu: set cpu 1
+    set_cpu: set cpu 1
+
+    queue stats: current size 0;
+    attempts: (add_attempts: 307211; get_attempts: 307211; add_attempts - get_attempts: 0);
+    counts (add_count: 307211; get_count: 307211; add_count - get_count: 0)
+
+    queue stats: current size 0;
+    attempts: (add_attempts: 614958; get_attempts: 614958; add_attempts - get_attempts: 0);
+    counts (add_count: 614958; get_count: 614958; add_count - get_count: 0)
+
+    queue stats: current size 1;
+    attempts: (add_attempts: 923083; get_attempts: 923082; add_attempts - get_attempts: 1);
+    counts (add_count: 923083; get_count: 923082; add_count - get_count: 1)
+    ^C
+    real	0m3.187s
+    user	0m0.387s
+    sys	0m2.799s
+
+
+
+
+with usleep(1) :
+
+    set_cpu: set cpu 1
+    set_cpu: set cpu 1
+
+    queue stats: current size 0;
+    attempts: (add_attempts: 17226; get_attempts: 17227; add_attempts - get_attempts: -1);
+    counts (add_count: 17226; get_count: 17226; add_count - get_count: 0)
+
+    queue stats: current size 0;
+    attempts: (add_attempts: 34269; get_attempts: 34270; add_attempts - get_attempts: -1);
+    counts (add_count: 34269; get_count: 34269; add_count - get_count: 0)
+
+    queue stats: current size 0;
+    attempts: (add_attempts: 51339; get_attempts: 51340; add_attempts - get_attempts: -1);
+    counts (add_count: 51339; get_count: 51339; add_count - get_count: 0)
+    ^C
+    real	0m3.171s
+    user	0m0.040s
+    sys	0m0.258s
+
+
+
+загрузка ядер на 100%

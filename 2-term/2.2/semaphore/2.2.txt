@@ -1,0 +1,69 @@
+Неименованные семафоры существуют только в памяти и требуют, чтобы
+процессы, использующие их, обладали правом доступа к этой памяти. То есть
+неименованные семафоры могут использоваться только потоками выполнения
+
+внутри одного и того же процесса или потоками выполнения в разных
+процессах, отображающих одну и ту же область памяти в свои адресные
+пространства. Именованные семафоры, напротив, доступны по именам и могут
+использоваться потоками выполнения в любых процессах, где известны их
+имена.
+Функция sem_unlink удаляет имя семафора. Если в системе не остается
+открытых ссылок на семафор, он также удаляется. В противном случае
+удаление семафора откладывается, пока не будет закрыта последняя ссылка
+на него.
+
+A useful way to think of a semaphore as used in a real-world system is as a record of how many units of a particular resource are available, 
+
+
+int sem_init(sem_t *sem, int pshared, unsigned int value);
+int sem_destroy(sem_t *sem);
+
+int sem_post(sem_t *sem);
+
+int sem_wait(sem_t *sem);
+int sem_trywait(sem_t *sem);
+int sem_timedwait(sem_t *restrict sem,
+                    const struct timespec *restrict abs_timeout);
+
+
+
+    set_cpu: set cpu 1
+    set_cpu: set cpu 1
+
+    queue stats: current size 0;
+    attempts: (add_attempts: 1177857; get_attempts: 1177857; add_attempts - get_attempts: 0);
+    counts (add_count: 1177857; get_count: 1177857; add_count - get_count: 0)
+
+    queue stats: current size 0;
+    attempts: (add_attempts: 2240450; get_attempts: 2240450; add_attempts - get_attempts: 0);
+    counts (add_count: 2240450; get_count: 2240450; add_count - get_count: 0)
+
+    queue stats: current size 1;
+    attempts: (add_attempts: 3367660; get_attempts: 3367659; add_attempts - get_attempts: 1);
+    counts (add_count: 3367660; get_count: 3367659; add_count - get_count: 1)
+    ^C
+    real	0m3.058s
+    user	0m0.490s
+    sys	0m2.566s
+
+
+with usleep(1):
+
+    set_cpu: set cpu 1
+    set_cpu: set cpu 1
+
+    queue stats: current size 0;
+    attempts: (add_attempts: 17253; get_attempts: 17253; add_attempts - get_attempts: 0);
+    counts (add_count: 17253; get_count: 17253; add_count - get_count: 0)
+
+    queue stats: current size 0;
+    attempts: (add_attempts: 34280; get_attempts: 34280; add_attempts - get_attempts: 0);
+    counts (add_count: 34280; get_count: 34280; add_count - get_count: 0)
+
+    queue stats: current size 0;
+    attempts: (add_attempts: 51386; get_attempts: 51386; add_attempts - get_attempts: 0);
+    counts (add_count: 51386; get_count: 51386; add_count - get_count: 0)
+    ^C
+    real	0m3.408s
+    user	0m0.050s
+    sys	0m0.271s

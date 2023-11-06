@@ -1,0 +1,89 @@
+
+спинлок = ожидание на холостом цикле, впустыую тратятся ресурсы (т к  он продолжает грузить процессор во время ожидания)
+плюсы : не переключается контекст, не вытесняется из очереди исполнения, не теряются кэши, можно очень быстро продолжить исполнение
+
+    Spinlock is a lock that causes a thread trying to acquire it to simply wait in a loop ("spin") 
+    while repeatedly checking whether the lock is available.
+
+    Since the thread remains active but is not performing a useful task, the use of such a lock is a kind of busy waiting.
+    
+    Because they avoid overhead from operating system process rescheduling or context switching, 
+    spinlocks are efficient if threads are likely to be blocked for only short periods. 
+    For this reason, operating-system kernels often use spinlocks. 
+    However, spinlocks become wasteful if held for longer durations, as they may prevent other threads from running 
+    and require rescheduling. The longer a thread holds a lock, the greater the risk that 
+    the thread will be interrupted by the OS scheduler while holding the lock. If this happens, 
+    other threads will be left "spinning" (repeatedly trying to acquire the lock), 
+    while the thread holding the lock is not making progress towards releasing it.
+
+
+int pthread_spin_init(pthread_spinlock_t *lock, int pshared);
+int pthread_spin_destroy(pthread_spinlock_t *lock);
+
+       PTHREAD_PROCESS_PRIVATE
+              The spin lock is to be operated on only by threads in the
+              same process as the thread that calls pthread_spin_init().
+              (Attempting to share the spin lock between processes
+              results in undefined behavior.)
+
+       PTHREAD_PROCESS_SHARED
+              The spin lock may be operated on by any thread in any
+              process that has access to the memory containing the lock
+              (i.e., the lock may be in a shared memory object that is
+              shared among multiple processes).
+
+
+int pthread_spin_lock(pthread_spinlock_t *lock);
+int pthread_spin_trylock(pthread_spinlock_t *lock); 
+       function is like pthread_spin_lock(),
+       except that if the spin lock referred to by lock is currently
+       locked, then, instead of spinning, the call returns immediately
+       with the error EBUSY.
+int pthread_spin_unlock(pthread_spinlock_t *lock);
+
+
+    set_cpu: set cpu 1
+    set_cpu: set cpu 1
+
+    queue stats: current size 0;
+    attempts: (add_attempts: 97133137; get_attempts: 85092160; add_attempts - get_attempts: 12040977);
+    counts (add_count: 370000; get_count: 370000; add_count - get_count: 0)
+
+    queue stats: current size 10000;
+    attempts: (add_attempts: 193534860; get_attempts: 170911388; add_attempts - get_attempts: 22623472);
+    counts (add_count: 750000; get_count: 740000; add_count - get_count: 10000)
+
+    queue stats: current size 0;
+    attempts: (add_attempts: 291065574; get_attempts: 255456835; add_attempts - get_attempts: 35608739);
+    counts (add_count: 1120000; get_count: 1120000; add_count - get_count: 0)
+    ^C
+    real	0m3.341s
+    user	0m3.337s
+    sys	0m0.000s
+
+
+
+with usleep(1) : 
+
+    set_cpu: set cpu 1
+    set_cpu: set cpu 1
+
+    queue stats: current size 0;
+    attempts: (add_attempts: 108; get_attempts: 89798687; add_attempts - get_attempts: -89798579);
+    counts (add_count: 107; get_count: 107; add_count - get_count: 0)
+
+    queue stats: current size 0;
+    attempts: (add_attempts: 224; get_attempts: 179490621; add_attempts - get_attempts: -179490397);
+    counts (add_count: 223; get_count: 223; add_count - get_count: 0)
+
+    queue stats: current size 0;
+    attempts: (add_attempts: 335; get_attempts: 268838915; add_attempts - get_attempts: -268838580);
+    counts (add_count: 334; get_count: 334; add_count - get_count: 0)
+    ^C
+    real	0m3.313s
+    user	0m3.308s
+    sys	0m0.000s
+
+
+
+Загрузка ядер : 100%

@@ -9,12 +9,14 @@
 
 #include <pthread.h>
 #include <sched.h>
+#include <linux/futex.h>
+#include <sys/syscall.h>
+#include <stdint.h>
 
 #include "queue.h"
 
 #define RED "\033[41m"
 #define NOCOLOR "\033[0m"
-
 
 void set_cpu(int n) {
 	int err;

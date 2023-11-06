@@ -9,12 +9,14 @@
 
 #include <pthread.h>
 #include <sched.h>
+#include <semaphore.h>
 
 #include "queue.h"
 
 #define RED "\033[41m"
 #define NOCOLOR "\033[0m"
 
+sem_t sem;
 
 void set_cpu(int n) {
 	int err;
@@ -41,6 +43,9 @@ void *reader(void *arg) {
 	set_cpu(1);
 
 	while (1) {
+		if (sem_wait(&sem)) {
+			printf("ERROR: sem_wait() in reader\n");
+		}
 		int val = -1;
 		int ok = queue_get(q, &val); // достаём значение с очереди
 		if (!ok) {
@@ -69,6 +74,9 @@ void *writer(void *arg) {
 			continue;
 		}
 		i++;
+		if (sem_post(&sem)) {
+			printf("ERROR: sem_post() in writer\n");
+		}
 	}
 
 	return NULL;
@@ -83,6 +91,10 @@ int main() {
 
 	q = queue_init(1000000);   // создаём очередь
 	
+	if (sem_init(&sem, 0, 0)) {
+		printf("ERROR: sem_init() in main()\n");
+		return -1;
+	}
 
 	err = pthread_create(&tid, NULL, reader, q);   // создаём поток на чтение, передаём нашу очередь
 	if (err) {
@@ -98,6 +110,11 @@ int main() {
 	err = pthread_create(&tid, NULL, writer, q);   // создаём поток на запись, передаём нашу очередь
 	if (err) {
 		printf("main: pthread_create() failed: %s\n", strerror(err));
+		return -1;
+	}
+
+	if (sem_destroy(&sem)) {
+		printf("ERROR: sem_destroy() in main()\n");
 		return -1;
 	}
 
