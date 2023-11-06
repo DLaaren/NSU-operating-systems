@@ -54,7 +54,6 @@ thread2:
     pthread_cond_signal(&cond);
     pthread_mutex_unlock(&mutex);
 
-    
     set_cpu: set cpu 1
     set_cpu: set cpu 1
 

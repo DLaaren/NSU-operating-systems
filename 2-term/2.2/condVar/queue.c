@@ -21,13 +21,11 @@ void *qmonitor(void *arg) {
 }
 
 queue_t* queue_init(int max_count) { // аргумент = макс кол-во нод в спсике
-	int err = pthread_cond_init(&cond, NULL);
-	if (err) {
+	if (pthread_cond_init(&cond, NULL)) {
 		printf("ERROR: pthread_cond_init() in queue_init()\n");
 		abort();
 	}
-	err = pthread_mutex_init(&mutex, NULL);
-	if (err) {
+	if (pthread_mutex_init(&mutex, NULL)) {
 		printf("ERROR: pthread_mutex_init() in queue_init()\n");
 		abort();
 	}
@@ -46,7 +44,7 @@ queue_t* queue_init(int max_count) { // аргумент = макс кол-во 
 	q->add_attempts = q->get_attempts = 0;
 	q->add_count = q->get_count = 0;
 
-	err = pthread_create(&q->qmonitor_tid, NULL, qmonitor, q);  // создаём поток, его tid сохраняем в очереди, запускаем qmonitor с параметром q = созданная очередь
+	int err = pthread_create(&q->qmonitor_tid, NULL, qmonitor, q);  // создаём поток, его tid сохраняем в очереди, запускаем qmonitor с параметром q = созданная очередь
 	if (err) {
 		printf("queue_init: pthread_create() failed: %s\n", strerror(err));
 		abort();
@@ -56,8 +54,7 @@ queue_t* queue_init(int max_count) { // аргумент = макс кол-во 
 }
 
 void queue_destroy(queue_t *q) {
-	int err = pthread_mutex_lock(&mutex);
-	if (err) {
+	if (pthread_mutex_lock(&mutex)) {
 		printf("ERROR: pthread_mutex_lock in queue_destroy()\n");
 	}
 	qnode_t *curr_node = q->first;
@@ -68,8 +65,7 @@ void queue_destroy(queue_t *q) {
 	}
 	free(q);
 
-	err = pthread_mutex_unlock(&mutex);
-	if (err) {
+	if (pthread_mutex_unlock(&mutex)) {
 		printf("ERROR: pthread_mutex_unlock in queue_destroy()\n");
 	}
 	if (pthread_cond_destroy(&cond)) {
@@ -81,8 +77,7 @@ void queue_destroy(queue_t *q) {
 }
 
 int queue_add(queue_t *q, int val) {
-	int err = pthread_mutex_lock(&mutex);
-	if (err) {
+	if (pthread_mutex_lock(&mutex)) {
 		printf("ERROR: pthread_mutex_lock in queue_add()\n");
 	}
 
@@ -91,12 +86,10 @@ int queue_add(queue_t *q, int val) {
 	assert(q->count <= q->max_count);   // проверка можем ли мы добавить элемент в очередь
 
 	if (q->count == q->max_count) {
-		err = pthread_cond_signal(&cond);
-		if (err) {
+		if (pthread_cond_signal(&cond)) {
 			printf("ERROR: pthread_cond_singnal() in queue_add()\n");
 		}
-		err = pthread_mutex_unlock(&mutex);
-		if (err) {
+		if (pthread_mutex_unlock(&mutex)) {
 			printf("ERROR: pthread_mutex_unlock in queue_add()\n");
 		}
 		return 0;
@@ -123,20 +116,17 @@ int queue_add(queue_t *q, int val) {
 	q->count++;
 	q->add_count++;    // + 1 удачная попытка
 
-	err = pthread_cond_signal(&cond);
-	if (err) {
+	if (pthread_cond_signal(&cond)) {
 		printf("ERROR: pthread_cond_singnal() in queue_add()\n");
 	}
-	err = pthread_mutex_unlock(&mutex);
-	if (err) {
+	if (pthread_mutex_unlock(&mutex)) {
 		printf("ERROR: pthread_mutex_unlock in queue_add()\n");
 	}
 	return 1;
 }
 
 int queue_get(queue_t *q, int *val) {
-	int err = pthread_mutex_lock(&mutex);
-	if (err) {
+	if (pthread_mutex_lock(&mutex)) {
 		printf("ERROR: pthread_mutex_lock in queue_get()\n");
 	}
 
@@ -148,8 +138,12 @@ int queue_get(queue_t *q, int *val) {
 		pthread_cond_wait(&cond, &mutex);
 	}
 
-	if (q->count == 0)
+	if (q->count == 0) {
+		if (pthread_mutex_unlock(&mutex)) {
+			printf("ERROR: pthread_mutex_unlock in queue_get()\n");
+		}
 		return 0;
+	}
 
 	qnode_t *tmp = q->first; // сохраняем указатель на первую ноду
 
@@ -160,8 +154,7 @@ int queue_get(queue_t *q, int *val) {
 	q->count--; // уменьшаем длину очереди
 	q->get_count++; // + 1 удачная попытка
 
-	err = pthread_mutex_unlock(&mutex);
-	if (err) {
+	if (pthread_mutex_unlock(&mutex)) {
 		printf("ERROR: pthread_mutex_unlock in queue_get()\n");
 	}
 	return 1;
