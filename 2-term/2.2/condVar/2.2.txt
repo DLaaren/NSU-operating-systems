@@ -59,7 +59,7 @@ thread2:
 
     queue stats: current size 153606;
     attempts: (add_attempts: 11767270; get_attempts: 11613665; add_attempts - get_attempts: 153605);
-    counts (add_count: 11767270; get_count: 11613664; add_count - get_count: 153606)
+    counts (add_count: 11 767 270; get_count: 11613664; add_count - get_count: 153606)
 
     queue stats: current size 107730;
     attempts: (add_attempts: 23039635; get_attempts: 22931905; add_attempts - get_attempts: 107730);

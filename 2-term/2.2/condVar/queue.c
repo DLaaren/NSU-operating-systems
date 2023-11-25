@@ -134,7 +134,7 @@ int queue_get(queue_t *q, int *val) {
 
 	assert(q->count >= 0);  // проверка не ушёл ли размер стека в минус
 
-	while (!(q->count > 0)) {
+	while (q->count == 0) {
 		pthread_cond_wait(&cond, &mutex);
 	}
 

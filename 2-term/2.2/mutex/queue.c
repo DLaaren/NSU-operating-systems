@@ -10,8 +10,10 @@
 // uint32_t readerLock = 1;
 // uint32_t writerLock = 0;
 
-pthread_mutex_t mutexGet = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutexAdd = PTHREAD_MUTEX_INITIALIZER;
+// pthread_mutex_t mutexGet = PTHREAD_MUTEX_INITIALIZER;
+// pthread_mutex_t mutexAdd = PTHREAD_MUTEX_INITIALIZER;
+
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void *qmonitor(void *arg) {
 	queue_t *q = (queue_t *)arg;
@@ -27,12 +29,8 @@ void *qmonitor(void *arg) {
 }
 
 queue_t* queue_init(int max_count) { // аргумент = макс кол-во нод в спсике
-	if (pthread_mutex_init(&mutexAdd, NULL)) {
-		printf("ERROR: pthread_mutex_init() in queue_init()\n");
-		abort();
-	}
-	
-	if (pthread_mutex_init(&mutexGet, NULL)) {
+
+	if (pthread_mutex_init(&mutex, NULL)) {
 		printf("ERROR: pthread_mutex_init() in queue_init()\n");
 		abort();
 	}
@@ -63,13 +61,8 @@ queue_t* queue_init(int max_count) { // аргумент = макс кол-во 
 }
 
 void queue_destroy(queue_t *q) {
-	// int s = syscall(SYS_futex, &writerLock, FUTEX_WAIT, 1, NULL, NULL, 0);
-	// int m = syscall(SYS_futex, &readerLock, FUTEX_WAIT, 1, NULL, NULL, 0);
-	// if ((s == -1 || m == -1) && errno != EAGAIN) {
-	// 	printf("queue_destroy() failed on futex_wait %s\n", strerror(errno));
-	// 	abort();
-	// }
-	if (pthread_mutex_lock(&mutexAdd) || pthread_mutex_lock(&mutexGet)) {
+
+	if (pthread_mutex_lock(&mutex)) {
 		printf("ERROR: thread_mutex_lock in queue_destroy()\n");
 	}
 
@@ -80,23 +73,19 @@ void queue_destroy(queue_t *q) {
 		free(tmp);
 	}
 	free(q);
-	if (pthread_mutex_unlock(&mutexAdd) || pthread_mutex_unlock(&mutexGet)) {
+
+
+	if (pthread_mutex_unlock(&mutex)) {
 		printf("ERROR: pthread_mutex_unlock in queue_destroy()\n");
 	}
-	if (pthread_mutex_destroy(&mutexAdd) || pthread_mutex_destroy(&mutexGet)) {
+	if (pthread_mutex_destroy(&mutex)) {
 		printf("ERROR: pthread_mutex_destroy in queue_destroy()\n");
 	}
 }
 
 int queue_add(queue_t *q, int val) {
-	// int s = syscall(SYS_futex, &writerLock, FUTEX_WAIT, 1, NULL, NULL, 0);
-	// writerLock = 1;
-	// if (s == -1 && errno != EAGAIN) {
-	// 	printf("queue_add() failed on futex_wait %s\n", strerror(errno));
-	// 	abort();
-	// }
 
-	if (pthread_mutex_lock(&mutexGet)) {
+	if (pthread_mutex_lock(&mutex)) {
 		printf("ERROR: pthread_mutex_lock in queue_add()\n");
 	}
 
@@ -105,15 +94,11 @@ int queue_add(queue_t *q, int val) {
 	assert(q->count <= q->max_count);   // проверка можем ли мы добавить элемент в очередь
 
 	if (q->count == q->max_count) {
-		// readerLock = 0;
-		// s = syscall(SYS_futex, &readerLock, FUTEX_WAKE, 1, NULL, NULL, 0);
-        // if (s == -1) {
-        //     printf("queue_add() failed on futex_wake %s\n", strerror(errno));
-        //     abort();
-		// }
-		if (pthread_mutex_unlock(&mutexAdd)) {
+
+		if (pthread_mutex_unlock(&mutex)) {
 			printf("ERROR: pthread_mutex_unlock in queue_add()\n");
 		}
+
 		return 0;
 	}
 
@@ -138,13 +123,7 @@ int queue_add(queue_t *q, int val) {
 	q->count++;
 	q->add_count++;    // + 1 удачная попытка
 
-	// readerLock = 0;
-	// s = syscall(SYS_futex, &readerLock, FUTEX_WAKE, 1, NULL, NULL, 0);
-	// if (s == -1) {
-	// 	printf("queue_add() failed on futex_wake %s\n", strerror(errno));
-	// 	exit(-1);
-	// }
-	if (pthread_mutex_unlock(&mutexAdd)) {
+	if (pthread_mutex_unlock(&mutex)) {
 		printf("ERROR: pthread_mutex_unlock in queue_add()\n");
 	}
 
@@ -152,13 +131,8 @@ int queue_add(queue_t *q, int val) {
 }
 
 int queue_get(queue_t *q, int *val) {
-	// int s = syscall(SYS_futex, &readerLock, FUTEX_WAIT, 1, NULL, NULL, 0);
-	// readerLock = 1;
-	// if (s == -1 && errno != EAGAIN) {
-	// 	printf("queue_get() failed on futex_wait %s\n", strerror(errno));
-	// 	abort();
-	// }
-	if (pthread_mutex_lock(&mutexAdd)) {
+
+	if (pthread_mutex_lock(&mutex)) {
 		printf("ERROR: pthread_mutex_lock in queue_get()\n");
 	}
 
@@ -167,15 +141,11 @@ int queue_get(queue_t *q, int *val) {
 	assert(q->count >= 0);  // проверка можно ли что-то достать
 
 	if (q->count == 0) {
-		// writerLock = 0;
-		// s = syscall(SYS_futex, &writerLock, FUTEX_WAKE, 1, NULL, NULL, 0);
-		// if (s == -1) {
-		// 	printf("queue_get() failed on futex_wake %s\n", strerror(errno));
-		// 	abort();
-		// }
-		if (pthread_mutex_unlock(&mutexGet)) {
+
+		if (pthread_mutex_unlock(&mutex)) {
 			printf("ERROR: pthread_mutex_unlock in queue_get()\n");
 		}
+
 		return 0;
 	}
 
@@ -188,13 +158,8 @@ int queue_get(queue_t *q, int *val) {
 	q->count--; // уменьшаем длину очереди
 	q->get_count++; // + 1 удачная попытка
 
-	// writerLock = 0;
-	// s = syscall(SYS_futex, &writerLock, FUTEX_WAKE, 1, NULL, NULL, 0);
-	// if (s == -1) {
-	// 	printf("queue_get() failed on futex_wake %s\n", strerror(errno));
-	// 	abort();
-	// }
-	if (pthread_mutex_unlock(&mutexGet)) {
+
+	if (pthread_mutex_unlock(&mutex)) {
 		printf("ERROR: pthread_mutex_unlock in queue_get()\n");
 	}
 

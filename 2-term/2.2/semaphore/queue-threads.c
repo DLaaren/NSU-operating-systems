@@ -16,7 +16,11 @@
 #define RED "\033[41m"
 #define NOCOLOR "\033[0m"
 
-sem_t sem;
+int size = 1000000;
+
+sem_t sem_read;
+sem_t sem_write;
+sem_t sem_lock;
 
 void set_cpu(int n) {
 	int err;
@@ -43,18 +47,19 @@ void *reader(void *arg) {
 	set_cpu(1);
 
 	while (1) {
-		if (sem_wait(&sem)) {
-			printf("ERROR: sem_wait() in reader\n");
-		}
+
+		sem_wait(&sem_read);
+		sem_wait(&sem_lock);
+
 		int val = -1;
 		int ok = queue_get(q, &val); // достаём значение с очереди
-		if (!ok) {
-			continue;
-		}
 		if (expected != val)
 			printf(RED"ERROR: get value is %d but expected  %d" NOCOLOR "\n", val, expected);
 
 		expected = val + 1;
+
+		sem_post(&sem_lock);
+		sem_post(&sem_write);
 	}
 
 	return NULL;
@@ -65,22 +70,25 @@ void *writer(void *arg) {
 	queue_t *q = (queue_t *)arg;
 	printf("writer [pid : %d; ppid : %d; tid : %d]\n", getpid(), getppid(), gettid());
 
-	set_cpu(1);
+	set_cpu(2);
 
 	while (1) {
+
+		sem_wait(&sem_write);
+		sem_wait(&sem_lock);
+
 		// usleep(1);
 		int ok = queue_add(q, i); // добавляем значение в очередь
-		if (!ok) {
-			continue;
-		}
 		i++;
-		if (sem_post(&sem)) {
-			printf("ERROR: sem_post() in writer\n");
-		}
+
+		sem_post(&sem_lock);
+		sem_post(&sem_read);
+
 	}
 
 	return NULL;
 }
+
 
 int main() {
 	pthread_t tid;
@@ -89,9 +97,9 @@ int main() {
 
 	printf("main [pid : %d; ppid : %d; tid : %d]\n", getpid(), getppid(), gettid());
 
-	q = queue_init(1000000);   // создаём очередь
+	q = queue_init(size);   // создаём очередь
 	
-	if (sem_init(&sem, 0, 0)) {
+	if (sem_init(&sem_read, 0, 0) || sem_init(&sem_write, 0, size) || sem_init(&sem_lock, 0, 1)) {
 		printf("ERROR: sem_init() in main()\n");
 		return -1;
 	}
@@ -113,7 +121,7 @@ int main() {
 		return -1;
 	}
 
-	if (sem_destroy(&sem)) {
+	if (sem_destroy(&sem_read) || sem_destroy(&sem_write) || sem_destroy(&sem_lock)) {
 		printf("ERROR: sem_destroy() in main()\n");
 		return -1;
 	}

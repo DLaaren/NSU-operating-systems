@@ -46,7 +46,7 @@ pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
     queue stats: current size 0;
     attempts: (add_attempts: 307211; get_attempts: 307211; add_attempts - get_attempts: 0);
-    counts (add_count: 307211; get_count: 307211; add_count - get_count: 0)
+    counts (add_count: 307 211; get_count: 307211; add_count - get_count: 0)
 
     queue stats: current size 0;
     attempts: (add_attempts: 614958; get_attempts: 614958; add_attempts - get_attempts: 0);

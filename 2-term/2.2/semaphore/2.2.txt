@@ -14,6 +14,7 @@
 
 A useful way to think of a semaphore as used in a real-world system is as a record of how many units of a particular resource are available, 
 
+if condVar is locked -> sched_yield() 
 
 int sem_init(sem_t *sem, int pshared, unsigned int value);
 int sem_destroy(sem_t *sem);
@@ -27,12 +28,12 @@ int sem_timedwait(sem_t *restrict sem,
 
 
 
-    set_cpu: set cpu 1
+    set_cpu: set cpu 1 
     set_cpu: set cpu 1
 
     queue stats: current size 0;
     attempts: (add_attempts: 1177857; get_attempts: 1177857; add_attempts - get_attempts: 0);
-    counts (add_count: 1177857; get_count: 1177857; add_count - get_count: 0)
+    counts (add_count: 1 177 857; get_count: 1177857; add_count - get_count: 0)
 
     queue stats: current size 0;
     attempts: (add_attempts: 2240450; get_attempts: 2240450; add_attempts - get_attempts: 0);
