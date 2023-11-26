@@ -10,8 +10,8 @@
 #include <unistd.h>
 
 typedef struct Node_s {
-    char value[100];
-    Node_s *next;
+    char *value;
+    struct Node_s *next;
     pthread_mutex_t mutex;
 } Node;
 

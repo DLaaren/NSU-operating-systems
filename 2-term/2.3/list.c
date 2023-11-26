@@ -14,7 +14,7 @@ void list_destroy(List* list) {
     Node *curr_node = list->first;
     for (size_t i = 0; i < list->size || curr_node != NULL; i++) {
         Node *next_node = curr_node->next;
-        err = pthread_mutex_destroy(curr_node->mutex);
+        err = pthread_mutex_destroy(&(curr_node->mutex));
         if (err == -1) {
             printf("list_destroy() : pthread_mutex_destroy() failed : %s\n", strerror(err));
             exit(1);
@@ -26,16 +26,16 @@ void list_destroy(List* list) {
 }
 
 void list_add(List *list, char *value, size_t pos) {
-    if (pos > size) {
-        pos = size;
+    if (pos > list->size) {
+        pos = list->size;
     }
     int err;
     Node *curr_node = list->first;
     for (size_t i = 0; i < pos; i++) {
         curr_node = curr_node->next;
     }
-    new_node = calloc(1, sizeof(Node));
-    err = pthread_mutex_init(new_node->mutex, NULL);
+    Node *new_node = calloc(1, sizeof(Node));
+    err = pthread_mutex_init(&(new_node->mutex), NULL);
     if (err == -1) {
         printf("list_add() : pthread_mutex_init() failed : %s\n", strerror(err));
         free(new_node);
@@ -54,8 +54,8 @@ void list_add(List *list, char *value, size_t pos) {
 }
 
 char* list_get(List *list, char *value, size_t pos) {
-    if (pos > size) {
-        pos = size;
+    if (pos > list->size) {
+        pos = list->size;
     }
     Node *curr_node = list->first;
     for (size_t i = 0; i < pos; i++) {
@@ -65,20 +65,20 @@ char* list_get(List *list, char *value, size_t pos) {
 }
 
 void list_erase(List *list, char *value, size_t pos) {
-    if (pos > size) {
-        pos = size;
+    if (pos > list->size) {
+        pos = list->size;
     }
-    int err;
     Node *curr_node = list->first;
     for (size_t i = 0; i < pos; i++) {
         curr_node = curr_node->next;
     }
+    Node *node_to_delete;
     if (pos == 0) {
-        Node *node_to_delete = list->first;
+        node_to_delete = list->first;
         list->first = node_to_delete->next;
     }
     else {
-        Node *node_to_delete = curr_node->next;
+        node_to_delete = curr_node->next;
         curr_node->next = node_to_delete->next;
     }
     free(node_to_delete);
