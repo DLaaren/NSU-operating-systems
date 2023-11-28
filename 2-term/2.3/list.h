@@ -18,12 +18,16 @@ typedef struct Node_s {
 typedef struct List_s {
     Node *first;
     size_t size;
+    pthread_mutex_t mutex;
 } List;
 
 List* list_init();
 void list_destroy(List *list);
 void list_add(List *list, char *value, size_t pos);
-char* list_get(List *list, char *value, size_t pos);
-void list_erase(List *list, char *value, size_t pos);
+Node* list_get(List *list, size_t pos);
+void list_erase(List *list, size_t pos);
+int list_compare_values(List *list, Node *node);
+void list_swap_elements(List *list, Node *node);
+void list_print(List *list);
 
 #endif		// __LIST_H__

@@ -19,58 +19,50 @@ int looking_for_increasing_string_length_itertions;
 int looking_for_decreasing_string_length_itertions;
 int looking_for_equal_string_length_itertions;
 int list_elements_swaps;
-int list_elements_equal;
+int list_elements_equals;
 
-/*
-     __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __                
-    |           |              |                    |                       
-    |   node    |  node->next  |  node->next->next  |
-    |     1     |      2       |         3          |
-    |__ __ __ __|__ __ __ __ __|__ __ __ __ __ __ __|
+pthread_mutex_t print_mutex;
 
-                        |
-                        v
-     __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ 
-    |           |              |                    |
-    |           |              |                    |
-    |     1     |      3       |         2          |
-    |__ __ __ __|__ __ __ __ __|__ __ __ __ __ __ __|
+void* monitor(void *arg) {
+    List *list = (List*)arg;
 
- */
-
-void list_swap_elements(List *list, Node *node) {
-    if (node == NULL) {
-        Node *first = list->first;
-        Node *second = first->next;
-        list->first = second;
-
-        first->next = second->next;
-        second->next = first;
+    while (1) {
+        printf("looking_for_increasing_string_length_itertions :: %d\n \
+                looking_for_decreasing_string_length_itertions :: %d\n \
+                looking_for_equal_string_length_itertions :: %d\n \
+                list_elements_swaps :: %d\n \
+                list_elements_equals :: %d\n\n", 
+                looking_for_increasing_string_length_itertions, looking_for_decreasing_string_length_itertions, 
+                looking_for_equal_string_length_itertions, list_elements_swaps, list_elements_equals);
+        list_print(list);
+        sleep(1);
     }
-    else {
-        Node *a = node->next;
-        Node *b = node->next->next;
-        node->next = b;
-        node->next->next = a;
-    }
+
+    return NULL;
 }
 
 void* looking_for_increasing_string_length(void *arg) {
     List *list = (List*) arg;
     while (1) {
         Node *prev_node = NULL;
-        Node *curr_node = list->first;
-        size_t list_size = list->size;
-        Node *next_node = curr_node->next;
+        Node *curr_node = list_get(list, 0);
+        Node *next_node = list_get(list, 1);
+        size_t curr_pos = 2;
 
-        for(size_t i = 0; i < list_size; i++) {
-            if (strcmp(curr_node->value, next_node->value) < 0) {
+        if (list_compare_values(list, prev_node) < 0) {
+            list_swap_elements(list, prev_node);
+            list_elements_swaps++;
+        }
+
+        for(size_t i = 0; i < list->size - 2; i++) {
+            prev_node = curr_node;
+            curr_node = next_node;
+            next_node = list_get(list, curr_pos++);
+
+            if (list_compare_values(list, prev_node) < 0) {
                 list_swap_elements(list, prev_node);
                 list_elements_swaps++;
             }
-            prev_node = curr_node;
-            curr_node = next_node;
-            next_node = next_node->next;
         }
         looking_for_increasing_string_length_itertions++;
     }
@@ -81,18 +73,24 @@ void* looking_for_decreasing_string_length(void *arg) {
     List *list = (List*) arg;
     while (1) {
         Node *prev_node = NULL;
-        Node *curr_node = list->first;
-        size_t list_size = list->size;
-        Node *next_node = curr_node->next;
+        Node *curr_node = list_get(list, 0);
+        Node *next_node = list_get(list, 1);
+        size_t curr_pos = 2;
 
-        for(size_t i = 0; i < list_size; i++) {
-            if (strcmp(curr_node->value, next_node->value) > 0) {
+        if (list_compare_values(list, prev_node) > 0) {
+            list_swap_elements(list, prev_node);
+            list_elements_swaps++;
+        }
+
+        for(size_t i = 0; i < list->size - 2; i++) {
+            prev_node = curr_node;
+            curr_node = next_node;
+            next_node = list_get(list, curr_pos++);
+
+            if (list_compare_values(list, prev_node) > 0) {
                 list_swap_elements(list, prev_node);
                 list_elements_swaps++;
             }
-            prev_node = curr_node;
-            curr_node = next_node;
-            next_node = next_node->next;
         }
         looking_for_decreasing_string_length_itertions++;
     }
@@ -102,16 +100,23 @@ void* looking_for_decreasing_string_length(void *arg) {
 void* looking_for_equal_string_length(void *arg) {
     List *list = (List*) arg;
     while (1) {
-        Node *curr_node = list->first;
-        Node *next_node = curr_node->next;
-        size_t list_size = list->size;
+        Node *prev_node = NULL;
+        Node *curr_node = list_get(list, 0);
+        Node *next_node = list_get(list, 1);
+        size_t curr_pos = 2;
 
-        for(size_t i = 0; i < list_size; i++) {
-            if (strcmp(curr_node->value, next_node->value) == 0) {
-                list_elements_equal++;
-            }
+        if (list_compare_values(list, prev_node) == 0) {
+            list_elements_equals++;
+        }
+
+        for(size_t i = 0; i < list->size - 2; i++) {
+            prev_node = curr_node;
             curr_node = next_node;
-            next_node = next_node->next;
+            next_node = list_get(list, curr_pos++);
+
+            if (list_compare_values(list, prev_node) == 0) {
+                list_elements_equals++;
+            }
         }
         looking_for_equal_string_length_itertions++;
     }
@@ -120,27 +125,40 @@ void* looking_for_equal_string_length(void *arg) {
 
 int main() {
     srand(time(NULL));
+    const char ALLOWED[] = "abcdefghijklmnopqrstuvwxyz123456789";
     pthread_t tid;
     List *list;
-    int list_size = 1000000;
-    int err1, err2, err3;
+    int list_size = 5;
+    int err0, err1, err2, err3;
 
     printf("main [pid : %d; ppid : %d; tid : %d]\n", getpid(), getppid(), gettid());
 
     list = list_init();
 
     for (size_t i = 0; i < list_size; i++) {
-        char *value = malloc((rand() % 100) * sizeof(char));
+        int rand_size = (rand() % 100);
+        int value_size = rand_size ? rand_size : 1;
+        char *value = malloc(value_size * sizeof(char));
+        for (size_t k = 0; k < value_size; k++) {
+            char c = ALLOWED[rand() % sizeof(ALLOWED)];
+            value[k] = c;
+        }
         list_add(list, value, 0);
     }
 
+    list_print(list);
+
+    sleep(2);
+
+    err0 = pthread_create(&tid, NULL, monitor, (void*)list);
+
     err1 = pthread_create(&tid, NULL, looking_for_increasing_string_length, (void*)list);
 
-    err2 = pthread_create(&tid, NULL, looking_for_decreasing_string_length, (void*)list);
+    err2 = 0; //pthread_create(&tid, NULL, looking_for_decreasing_string_length, (void*)list);
 
-    err3 = pthread_create(&tid, NULL, looking_for_equal_string_length, (void*)list); 
+    err3 = 0; //pthread_create(&tid, NULL, looking_for_equal_string_length, (void*)list); 
 	
-    if ((err1 | err2 | err3) != 0) {
+    if ((err0 | err1 | err2 | err3) != 0) {
 		printf(RED"main: pthread_create() failed: %s\n"NOCOLOR, strerror(err1));
 		return -1;
 	}
