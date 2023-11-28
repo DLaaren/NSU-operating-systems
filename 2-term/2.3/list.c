@@ -3,10 +3,12 @@
 
 #include "list.h"
 
+#define RED "\033[41m"
+#define NOCOLOR "\033[0m"
+
 List* list_init() {
     List *list;
     list = calloc(1, sizeof(List));
-    pthread_mutex_init(&(list->mutex), NULL);
     return list;
 }
 
@@ -27,19 +29,18 @@ void list_destroy(List* list) {
     free(list);
 }
 
-void list_add(List *list, char *value, size_t pos) {
+void list_add(List *list, char *value, long int pos) {
     pos = (pos > list->size) ? list->size : pos;
 
     int err;
     Node *curr_node = list->first;
-    for (size_t i = 0; i < pos; i++) {
+    for (long int i = 0; i < pos; i++) {
         curr_node = curr_node->next;
     }
     Node *new_node = calloc(1, sizeof(Node));
     err = pthread_mutex_init(&(new_node->mutex), NULL);
     if (err == -1) {
         printf("list_add() : pthread_mutex_init() failed : %s\n", strerror(err));
-        free(new_node);
         exit(2);
     }
     if (pos == 0) {
@@ -54,23 +55,35 @@ void list_add(List *list, char *value, size_t pos) {
     list->size++;
 }
 
-Node* list_get(List *list, size_t pos) {
+Node* list_get(List *list, long int pos) {
 
-    pos = (pos > list->size) ? list->size : pos;
+    pos = (pos >= list->size) ? list->size - 1 : pos;
 
+    pthread_mutex_lock(&(list->first->mutex));
     Node *curr_node = list->first;
-    for (size_t i = 0; i < pos; i++) {
-        curr_node = curr_node->next;
+
+    for (long int i = 0; i < pos; i++) {
+        if (curr_node->next != NULL)
+            pthread_mutex_lock(&(curr_node->next->mutex));
+
+        Node *prev_node = curr_node;
+
+        if (curr_node->next != NULL)
+            curr_node = curr_node->next;
+
+        pthread_mutex_unlock(&(prev_node->mutex));
     }
+
+    pthread_mutex_unlock(&(curr_node->mutex));
 
     return curr_node;
 }
 
-void list_erase(List *list, size_t pos) {
+void list_erase(List *list, long int pos) {
     pos = (pos > list->size) ? list->size : pos;
 
     Node *curr_node = list->first;
-    for (size_t i = 0; i < pos; i++) {
+    for (long int i = 0; i < pos; i++) {
         curr_node = curr_node->next;
     }
     Node *node_to_delete;
@@ -102,19 +115,43 @@ void list_erase(List *list, size_t pos) {
 
  */
 
-int list_compare_values(List *list, Node *node) {
+long int list_compare_values(List *list, Node *node) {
     if (node == NULL) {
+        pthread_mutex_lock(&(list->first->mutex));
+        pthread_mutex_lock(&(list->first->next->mutex));
 
         Node *first = list->first;
         Node *second = first->next;
-        return strlen(first->value) - strlen(second->value);
+
+        long int size_diff = strlen(first->value) - strlen(second->value);
+
+        pthread_mutex_unlock(&(list->first->mutex));
+        pthread_mutex_unlock(&(list->first->next->mutex));
+
+        // printf("compared1\n");
+
+        return size_diff;
 
     }
     else {
 
+        // printf(RED"got node :: %s"NOCOLOR"\n"RED"listsize :: %ld"NOCOLOR"\n\n", node->value, list->size);
+        pthread_mutex_lock(&(node->next->mutex));
+        pthread_mutex_lock(&(node->next->next->mutex));
+
         Node *a = node->next;
         Node *b = node->next->next;
-        return strlen(a->value) - strlen(b->value);
+
+        long int size_diff = strlen(a->value) - strlen(b->value);
+
+        pthread_mutex_unlock(&(node->next->mutex));
+        pthread_mutex_unlock(&(node->next->next->mutex));
+
+        // printf("compared2\n");
+
+        // sleep(1);
+
+        return size_diff;
 
     }
 
@@ -124,6 +161,11 @@ void list_swap_elements(List *list, Node *node) {
 
     if (node == NULL) {
 
+        pthread_mutex_lock(&(list->first->mutex));
+        pthread_mutex_lock(&(list->first->next->mutex));
+        if (list->first->next->next != NULL)
+            pthread_mutex_lock(&(list->first->next->next->mutex));
+
         Node *first = list->first;
         Node *second = first->next;
 
@@ -132,8 +174,18 @@ void list_swap_elements(List *list, Node *node) {
 
         list->first = second;
 
+        pthread_mutex_unlock(&(list->first->mutex));
+        pthread_mutex_unlock(&(list->first->next->mutex));
+        if (list->first->next->next != NULL)
+            pthread_mutex_unlock(&(list->first->next->next->mutex));
+
     }
     else {
+        pthread_mutex_lock(&(node->mutex));
+        pthread_mutex_lock(&(node->next->mutex));
+        pthread_mutex_lock(&(node->next->next->mutex));
+        if (node->next->next->next != NULL) 
+            pthread_mutex_lock(&(node->next->next->next->mutex));
 
         Node *a = node->next;
         Node *b = node->next->next;
@@ -142,6 +194,11 @@ void list_swap_elements(List *list, Node *node) {
         b->next = a;
         node->next = b;
 
+        pthread_mutex_unlock(&(node->mutex));
+        pthread_mutex_unlock(&(node->next->mutex));
+        pthread_mutex_unlock(&(node->next->next->mutex));
+        if (node->next->next->next != NULL) 
+            pthread_mutex_unlock(&(node->next->next->next->mutex));
     }
 }
 
