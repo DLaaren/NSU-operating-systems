@@ -128,14 +128,10 @@ long int list_compare_values(List *list, Node *node) {
         pthread_mutex_unlock(&(list->first->mutex));
         pthread_mutex_unlock(&(list->first->next->mutex));
 
-        // printf("compared1\n");
-
         return size_diff;
 
     }
     else {
-
-        // printf(RED"got node :: %s"NOCOLOR"\n"RED"listsize :: %ld"NOCOLOR"\n\n", node->value, list->size);
         pthread_mutex_lock(&(node->next->mutex));
         pthread_mutex_lock(&(node->next->next->mutex));
 
@@ -146,10 +142,6 @@ long int list_compare_values(List *list, Node *node) {
 
         pthread_mutex_unlock(&(node->next->mutex));
         pthread_mutex_unlock(&(node->next->next->mutex));
-
-        // printf("compared2\n");
-
-        // sleep(1);
 
         return size_diff;
 
