@@ -10,7 +10,7 @@
 #include <unistd.h>
 #include <assert.h>
 
-#define LIST_SIZE 10
+#define LIST_SIZE 10000
 
 #define READ_MODE 1
 #define WRITE_MODE 0

@@ -50,7 +50,7 @@ void unlock(Node *node) {
     #endif
 
     #ifdef MUTEX
-    if (pthread_mutex_lock(&(node->mutex)) != 0) {
+    if (pthread_mutex_unlock(&(node->mutex)) != 0) {
         printf(RED"Error while locking mutex :: %s\n"NOCOLOR, strerror(errno));
         exit(1);
     }

@@ -206,18 +206,17 @@ void* randomly_swapper_thread(void *arg) {
 }
 
 int main() {
-    srand(time(NULL));
+    // srand(time(NULL));
     const char ALLOWED[] = "abcdefghijklmnopqrstuvwxyz123456789";
     pthread_t tid;
     List *list;
-    int list_size = LIST_SIZE;
     int err0, err1, err2, err3, err4, err5, err6;
 
     printf("main [pid : %d; ppid : %d; tid : %d]\n", getpid(), getppid(), gettid());
 
     list = list_init();
 
-    for (long int i = 0; i < list_size; i++) {
+    for (long int i = 0; i < LIST_SIZE; i++) {
         int rand_size = (rand() % 100);
         int value_size = rand_size ? rand_size : 1;
         char *value = malloc(value_size * sizeof(char));

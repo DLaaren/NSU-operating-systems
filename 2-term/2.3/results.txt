@@ -1,0 +1,105 @@
+SIZE = 1'000
+
+SPINLOCK
+
+looking_for_increasing_string_length_itertions :: 1892
+looking_for_decreasing_string_length_itertions :: 1894
+looking_for_equal_string_length_itertions :: 1893
+list_elements_increasing :: 926'918
+list_elements_decreasing :: 929'350
+list_elements_equals :: 35'298
+list_elements_swaps :: 1'390'214
+
+
+MUTEX
+
+looking_for_increasing_string_length_itertions :: 1861
+looking_for_decreasing_string_length_itertions :: 1858
+looking_for_equal_string_length_itertions :: 1859
+list_elements_increasing :: 910'956
+list_elements_decreasing :: 911'671
+list_elements_equals :: 35'235
+list_elements_swaps :: 1'370'260
+
+
+RWLOCK
+
+looking_for_increasing_string_length_itertions :: 1774
+looking_for_decreasing_string_length_itertions :: 1776
+looking_for_equal_string_length_itertions :: 1771
+list_elements_increasing :: 869'910
+list_elements_decreasing :: 871'321
+list_elements_equals :: 31'977
+list_elements_swaps :: 1'305'772
+
+
+
+SIZE = 100'000
+
+SPINLOCK
+
+looking_for_increasing_string_length_itertions :: 31
+looking_for_decreasing_string_length_itertions :: 31
+looking_for_equal_string_length_itertions :: 31
+list_elements_increasing :: 1'560'794
+list_elements_decreasing :: 1'536'291
+list_elements_equals :: 64'167
+list_elements_swaps :: 2'248'205
+
+
+MUTEX
+
+looking_for_increasing_string_length_itertions :: 22
+looking_for_decreasing_string_length_itertions :: 22
+looking_for_equal_string_length_itertions :: 22
+list_elements_increasing :: 1'115'645
+list_elements_decreasing :: 1'115'620
+list_elements_equals :: 45'453
+list_elements_swaps :: 1'656'503
+
+
+RWLOCK
+
+looking_for_increasing_string_length_itertions :: 18
+looking_for_decreasing_string_length_itertions :: 18
+looking_for_equal_string_length_itertions :: 18
+list_elements_increasing :: 925'481
+list_elements_decreasing :: 926'233
+list_elements_equals :: 37'730
+list_elements_swaps :: 1'373'023
+
+
+
+SIZE = 10'000'000
+
+SPINLOCK
+
+looking_for_increasing_string_length_itertions :: 1
+looking_for_decreasing_string_length_itertions :: 1
+looking_for_equal_string_length_itertions :: 1
+list_elements_increasing :: 5'920'283
+list_elements_decreasing :: 5'920'736
+list_elements_equals :: 244'817
+list_elements_swaps :: 1'820'867
+
+
+MUTEX
+
+looking_for_increasing_string_length_itertions :: 1
+looking_for_decreasing_string_length_itertions :: 1
+looking_for_equal_string_length_itertions :: 1
+list_elements_increasing :: 5'735'987
+list_elements_decreasing :: 5'737'080
+list_elements_equals :: 237'176
+list_elements_swaps :: 1'591'086
+
+
+RWLOCK
+
+looking_for_increasing_string_length_itertions :: 1
+looking_for_decreasing_string_length_itertions :: 1
+looking_for_equal_string_length_itertions :: 1
+list_elements_increasing :: 5'447'396
+list_elements_decreasing :: 5'448'601
+list_elements_equals :: 225'283
+list_elements_swaps :: 1'460'995
