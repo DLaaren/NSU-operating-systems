@@ -44,23 +44,30 @@ void* monitor(void *arg) {
 void* looking_for_increasing_string_length(void *arg) {
     printf("INCREMENT COMPORATOR STARTED\n");
 
+    int mode = NONE_MODE;
+    #ifdef RWLOCK
+    mode = READ_MODE;
+    #endif
+
     List *list = (List*) arg;
     while (1) {
-        long int curr_pos = 0;
         Node *prev_node = NULL;
-        curr_pos++;
+        Node *curr_node = list->first;
+        Node *next_node = list->first->next;
 
-        if (list_compare_values(list, prev_node) < 0) {
-            list_swap_elements(list, prev_node);
-            list_elements_swaps1++;
-        }
-
-        for(; curr_pos + 1 < list->size; curr_pos++) {
-            prev_node = list_get(list, curr_pos - 1);
-
+        while (next_node != NULL) {
             if (list_compare_values(list, prev_node) < 0) {
                 list_swap_elements(list, prev_node);
                 list_elements_swaps1++;
+
+                prev_node = next_node;
+                curr_node = curr_node;
+                next_node = curr_node->next;
+            } 
+            else {
+                prev_node = curr_node;
+                curr_node = next_node;
+                next_node = next_node->next;
             }
         }
 
@@ -79,21 +86,23 @@ void* looking_for_decreasing_string_length(void *arg) {
 
     List *list = (List*) arg;
     while (1) {
-        long int curr_pos = 0;
         Node *prev_node = NULL;
-        curr_pos++;
+        Node *curr_node = list->first;
+        Node *next_node = list->first->next;
 
-        if (list_compare_values(list, prev_node) > 0) {
-            list_swap_elements(list, prev_node);
-            list_elements_swaps2++;
-        }
-
-        for(; curr_pos + 1 < list->size; curr_pos++) {
-            prev_node = list_get(list, curr_pos - 1);
-
+        while (next_node != NULL) {
             if (list_compare_values(list, prev_node) > 0) {
                 list_swap_elements(list, prev_node);
                 list_elements_swaps2++;
+
+                prev_node = next_node;
+                curr_node = curr_node;
+                next_node = curr_node->next;
+            } 
+            else {
+                prev_node = curr_node;
+                curr_node = next_node;
+                next_node = next_node->next;
             }
         }
         
@@ -112,19 +121,17 @@ void* looking_for_equal_string_length(void *arg) {
 
     List *list = (List*) arg;
     while (1) {
-        long int curr_pos = 0;
         Node *prev_node = NULL;
-        curr_pos++;
+        Node *curr_node = list->first;
+        Node *next_node = list->first->next;
 
-        if (list_compare_values(list, prev_node) == 0) {
-            list_elements_equals++;
-        }
-
-        for(; curr_pos + 1 < list->size; curr_pos++) {
-            prev_node = list_get(list, curr_pos - 1);
-
+        while (next_node != NULL) {
             if (list_compare_values(list, prev_node) == 0) {
                 list_elements_equals++;
+
+                prev_node = curr_node;
+                curr_node = next_node;
+                next_node = next_node->next;
             }
         }
 
@@ -162,11 +169,11 @@ int main() {
 
     err0 = pthread_create(&tid, NULL, monitor, (void*)list);
 
-    err1 = 0; //pthread_create(&tid, NULL, looking_for_increasing_string_length, (void*)list);
+    err1 = 0;//pthread_create(&tid, NULL, looking_for_increasing_string_length, (void*)list);
 
-    err2 = pthread_create(&tid, NULL, looking_for_decreasing_string_length, (void*)list);
+    err2 = 0; //pthread_create(&tid, NULL, looking_for_decreasing_string_length, (void*)list);
 
-    err3 = 0;//pthread_create(&tid, NULL, looking_for_equal_string_length, (void*)list); 
+    err3 = 0; //pthread_create(&tid, NULL, looking_for_equal_string_length, (void*)list); 
 	
     if ((err0 | err1 | err2 | err3) != 0) {
 		printf(RED"main: pthread_create() failed: %s\n"NOCOLOR, strerror(err1));
