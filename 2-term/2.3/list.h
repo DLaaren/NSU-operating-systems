@@ -8,15 +8,38 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <assert.h>
+
+#define LIST_SIZE 10
+
+#define READ_MODE 1
+#define WRITE_MODE 0
+#define NONE_MODE 2
+
+#define SPINLOCK
+// #define MUTEX
+// #define RWLOCK
 
 typedef struct Node_s {
     char *value;
     struct Node_s *next;
+
+    #ifdef SPINLOCK
+    pthread_spinlock_t spinlock;
+    #endif
+
+    #ifdef MUTEX
     pthread_mutex_t mutex;
+    #endif
+
+    #ifdef RWLOCK
+    pthread_rwlock_t rwlock;
+    #endif
 } Node;
 
 typedef struct List_s {
     Node *first;
+    Node *last;
     long int size;
 } List;
 
