@@ -51,5 +51,7 @@ void list_erase(List *list, long int pos);
 long int list_compare_values(List *list, Node *node);
 void list_swap_elements(List *list, Node *node);
 void list_print(List *list);
+void lock(Node *node, int mode);
+void unlock(Node *node);
 
 #endif		// __LIST_H__

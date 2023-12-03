@@ -9,14 +9,14 @@
 void lock(Node *node, int mode) {
     #ifdef SPINLOCK
     if (pthread_spin_lock(&(node->spinlock)) != 0) {
-        printf(RED"Error while locking spinlock\n"NOCOLOR);
+        printf(RED"Error while locking spinlock :: %s\n"NOCOLOR, strerror(errno));
         exit(1);
     }
     #endif
 
     #ifdef MUTEX
     if (pthread_mutex_lock(&(node->mutex)) != 0) {
-        printf(RED"Error while locking mutex\n"NOCOLOR);
+        printf(RED"Error while locking mutex :: %s\n"NOCOLOR, strerror(errno));
         exit(1);
     }
     #endif
@@ -24,13 +24,13 @@ void lock(Node *node, int mode) {
     #ifdef RWLOCK
     if (mode == READ_MODE) {
         if (pthread_rwlock_rdlock(&(node->rwlock)) != 0) {
-            printf(RED"Error while locking rwlock in reader mode\n"NOCOLOR);
+            printf(RED"Error while locking rwlock in reader mode :: %s\n"NOCOLOR, strerror(errno));
             exit(1);
         }
     }
     else if (mode == WRITE_MODE) {
         if (pthread_rwlock_wrlock(&(node->rwlock)) != 0) {
-            printf(RED"Error while locking rwlock in writer mode\n"NOCOLOR);
+            printf(RED"Error while locking rwlock in writer mode :: %s\n"NOCOLOR, strerror(errno));
             exit(1);
         }
     }
@@ -44,21 +44,21 @@ void lock(Node *node, int mode) {
 void unlock(Node *node) {
     #ifdef SPINLOCK
     if (pthread_spin_unlock(&(node->spinlock)) != 0) {
-        printf(RED"Error while unlocking spinlock\n"NOCOLOR);
+        printf(RED"Error while unlocking spinlock :: %s\n"NOCOLOR, strerror(errno));
         exit(1);
     }
     #endif
 
     #ifdef MUTEX
     if (pthread_mutex_lock(&(node->mutex)) != 0) {
-        printf(RED"Error while locking mutex\n"NOCOLOR);
+        printf(RED"Error while locking mutex :: %s\n"NOCOLOR, strerror(errno));
         exit(1);
     }
     #endif
 
     #ifdef RWLOCK
     if (pthread_rwlock_unlock(&(node->rwlock)) != 0) {
-        printf(RED"Error while unlocking rwlock\n"NOCOLOR);
+        printf(RED"Error while unlocking rwlock :: %s\n"NOCOLOR, strerror(errno));
         exit(1);
     }
     #endif
@@ -95,21 +95,21 @@ void list_add(List *list, char *value, long int pos) {
 
     #ifdef SPINLOCK
     if (pthread_spin_init(&(new_node->spinlock), 0) != 0) {
-        printf(RED"Cannot create spinlock for new node\n"NOCOLOR);
+        printf(RED"Cannot create spinlock for new node :: %s\n"NOCOLOR, strerror(errno));
         exit(2);
     }
     #endif
 
     #ifdef MUTEX
     if (pthread_mutex_init(&(new_node->mutex), 0) != 0) {
-        printf(RED"Cannot create mutex for new node\n"NOCOLOR);
+        printf(RED"Cannot create mutex for new node :: %s\n"NOCOLOR, strerror(errno));
         exit(2);
     }
     #endif
 
     #ifdef RWLOCK
     if (pthread_rwlock_init(&(new_node->rwlock), 0) != 0) {
-        printf(RED"Cannot create rwlock for new node\n"NOCOLOR);
+        printf(RED"Cannot create rwlock for new node :: %s\n"NOCOLOR, strerror(errno));
         exit(2);
     }
     #endif
