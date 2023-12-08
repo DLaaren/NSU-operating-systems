@@ -14,6 +14,11 @@
 #include "http-proxy.h"
 #include "picohttpparser.h"
 
+#define LOG(...) \
+    fprintf(stdout, __VA_ARGS__);
+#define ELOG(...) \
+    fprintf(stderr, __VA_ARGS__);
+
 #define BUFFER_SIZE 2048
 #define DEFAULT_PORT "80"
 
@@ -125,6 +130,9 @@ void *handle_connect_request(int client_socket_fd) {
         return NULL;
     }
 
+    // bytes_read = recv(client_socket_fd, buffer, BUFFER_SIZE, 00);
+    // LOG("fsd %d", bytes_read);
+
     if (parse_http_request(buffer, bytes_read, host_ip, sizeof(host_ip), host_port) == -1) {
         fprintf(stderr, "error :: parse_http_request()\n");
         close(client_socket_fd);
@@ -169,31 +177,54 @@ void *handle_connect_request(int client_socket_fd) {
         close(host_socket_fd);
         return NULL;
     }
-    memset(buffer, 0, BUFFER_SIZE);
 
-    // read from host
-    bytes_read = read(host_socket_fd, buffer, BUFFER_SIZE);
-    if (bytes_read == -1) {
-        fprintf(stderr, "error :: read() :: %s\n", strerror(errno));
-        close(client_socket_fd);
-        close(host_socket_fd);
-        return NULL;
-    }
-    else if (bytes_read == 0) {
-        fprintf(stderr, "warning :: connection on socket %d has been lost\n", client_socket_fd);
-        close(client_socket_fd);
-        close(host_socket_fd);
-        return NULL;
-    }
+    // while (bytes_read > 0) {
+    //     // read from client
+    //     fprintf(stderr, "cataplism\n");
+    //     bytes_read = read(client_socket_fd, buffer, BUFFER_SIZE);
+    //     fprintf(stderr, "AVAOBJAJB\n");
+    //     if (bytes_read == -1) {
+    //         fprintf(stderr, "error :: read() :: %s\n", strerror(errno));
+    //         close(client_socket_fd);
+    //         close(host_socket_fd);
+    //         return NULL;
+    //     }
+    //     else if (bytes_read == 0) {
+    //         break;
+    //     }
 
-    // write response to client
-    bytes_written = write(client_socket_fd, buffer, bytes_read);
-    if (bytes_written == -1) {
-        fprintf(stderr, "error :: write() :: %s\n", strerror(errno));
-        close(client_socket_fd);
-        close(host_socket_fd);
-        return NULL;
-    }
+    //     // write to host
+    //     bytes_written = write(host_socket_fd, buffer, bytes_read);
+    //     if (bytes_written == -1) {
+    //         fprintf(stderr, "error :: write() :: %s\n", strerror(errno));
+    //         close(client_socket_fd);
+    //         close(host_socket_fd);
+    //         return NULL;
+    //     }
+    // } 
+
+    do {
+        // read from host
+        bytes_read = read(host_socket_fd, buffer, BUFFER_SIZE);
+        if (bytes_read == -1) {
+            fprintf(stderr, "error :: read() :: %s\n", strerror(errno));
+            close(client_socket_fd);
+            close(host_socket_fd);
+            return NULL;
+        }
+        else if (bytes_read == 0) {
+            break;
+        }
+
+        // write response to client
+        bytes_written = write(client_socket_fd, buffer, bytes_read);
+        if (bytes_written == -1) {
+            fprintf(stderr, "error :: write() :: %s\n", strerror(errno));
+            close(client_socket_fd);
+            close(host_socket_fd);
+            return NULL;
+        }
+    } while (bytes_read > 0);
 
     close(client_socket_fd);
     close(host_socket_fd);
@@ -229,7 +260,7 @@ int parse_http_request(char *buffer, int buffer_len, char *ip, int ip_length, ch
 
     sprintf(tmp, "%.*s", (int)headers[i].value_len, headers[i].value);
 
-    printf("tmp :: %s\n", tmp);
+    // printf("tmp :: %s\n", tmp);
 
     if (strstr(tmp, ":") != NULL) {
         strcpy(ip, strtok(tmp, ":"));
