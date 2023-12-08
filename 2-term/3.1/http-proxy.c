@@ -32,16 +32,16 @@ int proxy_run(int port) {
     int listening_socket_fd = -1;
     // proxy cache
 
-    fprintf(stdout, "proxy is starting ...\n");
+    LOG("proxy is starting ...\n");
 
     listening_socket_fd = open_proxy_listening_socket(listening_socket_fd, port);
     if (listening_socket_fd == -1) {
-        fprintf(stderr, "error :: cannot open proxy listening socket\n");
+        ELOG("error :: cannot open proxy listening socket\n");
         proxy_stop(listening_socket_fd);
         return -1;
     }
 
-    fprintf(stdout, "proxy starts listening for connections ...\n");
+    LOG("proxy starts listening for connections ...\n");
 
     while (1) {
         pthread_t tid;
@@ -53,7 +53,7 @@ int proxy_run(int port) {
 
         client_socket_fd = accept(listening_socket_fd, (struct sockaddr *) &client_address, &client_address_length);
         if (client_socket_fd == -1) {
-            fprintf(stderr, "error :: accept() :: %s\n", strerror(errno));
+            ELOG("error :: accept() :: %s\n", strerror(errno));
             continue;
         }
 
@@ -61,13 +61,13 @@ int proxy_run(int port) {
 
         if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) == -1) {
             pthread_attr_destroy(&attr);
-            fprintf(stderr, "error :: pthread_attr_setdetachstate() :: %s\n", strerror(errno));
+            ELOG("error :: pthread_attr_setdetachstate() :: %s\n", strerror(errno));
             continue;
         }
 
         if (pthread_create(&tid, &attr, handle_connect_request, client_socket_fd) == -1) {
             pthread_attr_destroy(&attr);
-            fprintf(stderr, "error :: pthread_create() :: %s\n", strerror(errno));
+            ELOG("error :: pthread_create() :: %s\n", strerror(errno));
             continue;
         }
 
@@ -83,27 +83,33 @@ int open_proxy_listening_socket(int listening_socket_fd, int port) {
 
     listening_socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (listening_socket_fd == -1) {
-        fprintf(stderr, "error :: socket() :: %s\n", strerror(errno));
+        ELOG("error :: socket() :: %s\n", strerror(errno));
         return -1;
     }
 
     if (setsockopt(listening_socket_fd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0) {
-        fprintf(stderr, "error :: setsockopt() :: %s\n", strerror(errno));
+        ELOG("error :: setsockopt() :: %s\n", strerror(errno));
         return -1;
     }
 
     if (bind(listening_socket_fd, (struct sockaddr *) &proxy_addr, sizeof(proxy_addr))  ==  -1) {
-        fprintf(stderr, "error :: bind() :: %s\n", strerror(errno));
+        ELOG("error :: bind() :: %s\n", strerror(errno));
         return -1;
     }
 
     if (listen(listening_socket_fd, MAX_CONNECTIONS)  ==  -1) {
-        fprintf(stderr, "error :: listen() :: %s\n", strerror(errno));
+        ELOG("error :: listen() :: %s\n", strerror(errno));
         return -1;
     }
 
     return listening_socket_fd;
 }
+
+// TODO
+// разобраться с первым while
+// добавить signal handlers
+// добавить кэш
+
 
 void *handle_connect_request(int client_socket_fd) {
     int err = 0;
@@ -115,36 +121,32 @@ void *handle_connect_request(int client_socket_fd) {
     int bytes_written = 0;
     char buffer[BUFFER_SIZE] = {0};
 
-    fprintf(stdout, "got new connection request on socket %d\n", client_socket_fd);
+    LOG("got new connection request on socket %d\n", client_socket_fd);
 
     // read from client
     bytes_read = read(client_socket_fd, buffer, BUFFER_SIZE);
     if (bytes_read == -1) {
-        fprintf(stderr, "error :: read() :: %s\n", strerror(errno));
+        ELOG("error :: read() :: %s\n", strerror(errno));
         close(client_socket_fd);
         return NULL;
     }
     else if (bytes_read == 0) {
-        fprintf(stderr, "warning :: connection on socket %d has been lost\n", client_socket_fd);
+        ELOG("warning :: connection on socket %d has been lost\n", client_socket_fd);
         close(client_socket_fd);
         return NULL;
     }
-
-    // bytes_read = recv(client_socket_fd, buffer, BUFFER_SIZE, 00);
-    // LOG("fsd %d", bytes_read);
 
     if (parse_http_request(buffer, bytes_read, host_ip, sizeof(host_ip), host_port) == -1) {
-        fprintf(stderr, "error :: parse_http_request()\n");
+        ELOG("error :: parse_http_request()\n");
         close(client_socket_fd);
         return NULL;
     }
 
-    fprintf(stdout, "trying connect to host :: %s:%s\n", host_ip, host_port);
+    LOG("trying connect to host :: %s:%s\n", host_ip, host_port);
     
-
     host_socket_fd = socket(AF_INET, SOCK_STREAM, 0); 
     if (host_socket_fd == -1) {
-        fprintf(stderr, "error :: socket() :: %s\n", strerror(errno));
+        ELOG("error :: socket() :: %s\n", strerror(errno));
         close(client_socket_fd);
         return NULL;
     }
@@ -152,7 +154,7 @@ void *handle_connect_request(int client_socket_fd) {
     host_address.sin_family = AF_INET;
 
     if (inet_pton(AF_INET, host_ip, &(host_address.sin_addr)) == -1) {
-        fprintf(stderr, "error :: inet_pton() :: %s\n", strerror(errno));
+        ELOG("error :: inet_pton() :: %s\n", strerror(errno));
         close(client_socket_fd);
         close(host_socket_fd);
         return NULL;
@@ -161,18 +163,18 @@ void *handle_connect_request(int client_socket_fd) {
     host_address.sin_port = htons(atoi(host_port));
 
     if (connect(host_socket_fd, (struct sockaddr *) &host_address, sizeof(host_address)) == -1) {
-        fprintf(stderr, "error :: connect() :: %s\n", strerror(errno));
+        ELOG("error :: connect() :: %s\n", strerror(errno));
         close(client_socket_fd);
         close(host_socket_fd);
         return NULL;
     }
 
-    fprintf(stdout, "connection on socket %d has been successful\n", client_socket_fd);
+    LOG("connection on socket %d has been successful\n", client_socket_fd);
 
     // write to host
     bytes_written = write(host_socket_fd, buffer, bytes_read);
     if (bytes_written == -1) {
-        fprintf(stderr, "error :: write() :: %s\n", strerror(errno));
+        ELOG("error :: write() :: %s\n", strerror(errno));
         close(client_socket_fd);
         close(host_socket_fd);
         return NULL;
@@ -207,7 +209,7 @@ void *handle_connect_request(int client_socket_fd) {
         // read from host
         bytes_read = read(host_socket_fd, buffer, BUFFER_SIZE);
         if (bytes_read == -1) {
-            fprintf(stderr, "error :: read() :: %s\n", strerror(errno));
+            ELOG("error :: read() :: %s\n", strerror(errno));
             close(client_socket_fd);
             close(host_socket_fd);
             return NULL;
@@ -219,12 +221,15 @@ void *handle_connect_request(int client_socket_fd) {
         // write response to client
         bytes_written = write(client_socket_fd, buffer, bytes_read);
         if (bytes_written == -1) {
-            fprintf(stderr, "error :: write() :: %s\n", strerror(errno));
+            ELOG("error :: write() :: %s\n", strerror(errno));
             close(client_socket_fd);
             close(host_socket_fd);
             return NULL;
         }
+
     } while (bytes_read > 0);
+
+    LOG("closing connection on socket %d\n", client_socket_fd)
 
     close(client_socket_fd);
     close(host_socket_fd);
@@ -276,7 +281,7 @@ int parse_http_request(char *buffer, int buffer_len, char *ip, int ip_length, ch
     hints.ai_socktype = SOCK_STREAM;
 
     if (getaddrinfo(ip, NULL, &hints, &result) == -1) {
-        fprintf(stderr, "error :: geaddrinfo() :: %s\n", strerror(errno));
+        ELOG("error :: geaddrinfo() :: %s\n", strerror(errno));
         return -1;
     }
 
@@ -291,7 +296,8 @@ int parse_http_request(char *buffer, int buffer_len, char *ip, int ip_length, ch
             return 0;
         }
         else {
-            fprintf(stderr, "error :: inet_ntop() :: %s\n", strerror(errno));
+            ELOG("error :: inet_ntop() :: %s\n", strerror(errno));
+            freeaddrinfo(result);
             return -1;
         }
     }
