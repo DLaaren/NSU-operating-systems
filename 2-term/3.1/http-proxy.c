@@ -11,13 +11,15 @@
 #include <pthread.h>
 
 #include "http-proxy.h"
+#include "picohttpparser.h"
 
 #define BUFFER_SIZE 2048
 
 // add signal hadler for ^C ^'\'
 
 int open_proxy_listening_socket(int listening_socket_fd, int port);
-void *handle_connect_request(int client_socket_fd); // check cache if not present then creates new thread
+int parse_http_request(char *buffer, int buffer_length, char *ip, char *port);
+void *handle_connect_request(int client_socket_fd);
 
 int proxy_run(int port) {
     int listening_socket_fd = -1;
@@ -92,8 +94,11 @@ int open_proxy_listening_socket(int listening_socket_fd, int port) {
 }
 
 void *handle_connect_request(int client_socket_fd) {
+    int err = 0;
     int host_socket_fd = -1;
     struct sockaddr_in host_address;
+    char host_ip[4];
+    char host_port[2];
     int bytes_read = 0; 
     int bytes_written = 0;
     char buffer[BUFFER_SIZE] = {0};
@@ -104,31 +109,37 @@ void *handle_connect_request(int client_socket_fd) {
     bytes_read = read(client_socket_fd, buffer, BUFFER_SIZE);
     if (bytes_read == -1) {
         fprintf(stderr, "error :: read() :: %s\n", strerror(errno));
+        close(client_socket_fd);
         return NULL;
     }
     else if (bytes_read == 0) {
         fprintf(stderr, "warning :: connection on socket %d has been lost\n", client_socket_fd);
+        close(client_socket_fd);
         return NULL;
     }
 
-    // parse message
-
+    parse_http_request(buffer, bytes_read, host_ip, host_port);
 
     // connect ot host 
     host_socket_fd = socket(AF_INET, SOCK_STREAM, 0); 
     if (host_socket_fd == -1) {
         fprintf(stderr, "error :: socket() :: %s\n", strerror(errno));
+        close(client_socket_fd);
         return NULL;
     }
     host_address.sin_family = AF_INET;
-    if (inet_pton(AF_INET, /* host address */, &(host_address.sin_addr)) == -1) {
+    if (inet_pton(AF_INET, host_ip, &(host_address.sin_addr)) == -1) {
         fprintf(stderr, "error :: inet_pton() :: %s\n", strerror(errno));
+        close(client_socket_fd);
+        close(host_socket_fd);
         return NULL;
     }
-    host_address.sin_port = htons(/* host port */);
+    host_address.sin_port = htons(host_port);
 
     if (connect(host_socket_fd, (struct sockaddr *) &host_address, sizeof(host_address)) == -1) {
         fprintf(stderr, "error :: connect() :: %s\n", strerror(errno));
+        close(client_socket_fd);
+        close(host_socket_fd);
         return NULL;
     }
 
@@ -136,6 +147,8 @@ void *handle_connect_request(int client_socket_fd) {
     bytes_written = write(host_socket_fd, buffer, bytes_read);
     if (bytes_written == -1) {
         fprintf(stderr, "error :: write() :: %s\n", strerror(errno));
+        close(client_socket_fd);
+        close(host_socket_fd);
         return NULL;
     }
     memset(buffer, 0, BUFFER_SIZE);
@@ -144,10 +157,14 @@ void *handle_connect_request(int client_socket_fd) {
     bytes_read = read(host_socket_fd, buffer, BUFFER_SIZE);
     if (bytes_read == -1) {
         fprintf(stderr, "error :: read() :: %s\n", strerror(errno));
+        close(client_socket_fd);
+        close(host_socket_fd);
         return NULL;
     }
     else if (bytes_read == 0) {
         fprintf(stderr, "warning :: connection on socket %d has been lost\n", client_socket_fd);
+        close(client_socket_fd);
+        close(host_socket_fd);
         return NULL;
     }
 
@@ -155,12 +172,19 @@ void *handle_connect_request(int client_socket_fd) {
     bytes_written = write(client_socket_fd, buffer, bytes_read);
     if (bytes_written == -1) {
         fprintf(stderr, "error :: write() :: %s\n", strerror(errno));
+        close(client_socket_fd);
+        close(host_socket_fd);
         return NULL;
     }
 
     close(client_socket_fd);
     close(host_socket_fd);
     return NULL;
+}
+
+int parse_http_requestt(char *buffer, int buffer_length, char *ip, char *port) {
+    
+    return 0;
 }
 
 int proxy_stop() {
