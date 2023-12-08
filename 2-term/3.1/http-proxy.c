@@ -15,7 +15,7 @@
 #include "picohttpparser.h"
 
 #define BUFFER_SIZE 2048
-#define DEFAULT_PORT 80
+#define DEFAULT_PORT "80"
 
 // add signal hadler for ^C ^'\'
 
@@ -150,11 +150,7 @@ void *handle_connect_request(int client_socket_fd) {
         return NULL;
     }
 
-    if (host_port[0] != '\0') {
-        host_address.sin_port = htons(host_port);
-    } else {
-        host_address.sin_port = htons(DEFAULT_PORT);
-    }
+    host_address.sin_port = htons(atoi(host_port));
 
     if (connect(host_socket_fd, (struct sockaddr *) &host_address, sizeof(host_address)) == -1) {
         fprintf(stderr, "error :: connect() :: %s\n", strerror(errno));
@@ -163,7 +159,7 @@ void *handle_connect_request(int client_socket_fd) {
         return NULL;
     }
 
-    fprintf(stdout, "connection has been successful\n");
+    fprintf(stdout, "connection on socket %d has been successful\n", client_socket_fd);
 
     // write to host
     bytes_written = write(host_socket_fd, buffer, bytes_read);
@@ -241,9 +237,8 @@ int parse_http_request(char *buffer, int buffer_len, char *ip, int ip_length, ch
     }
     else {
         strcpy(ip, tmp);
+        strcpy(port, DEFAULT_PORT);
     }
-
-    printf("ip %s port %s\n", ip, port);
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
