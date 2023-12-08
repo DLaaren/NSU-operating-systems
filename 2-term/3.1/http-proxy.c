@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,58 +8,69 @@
 #include <poll.h>
 #include <signal.h>
 #include <errno.h>
+#include <pthread.h>
 
 #include "http-proxy.h"
 
 // add signal hadler for ^C ^'\'
 
 int open_proxy_listening_socket(int listening_socket_fd, int port);
-int handle_connect_request(int listening_socket_fd); // check cache if not present then creates new thread
+void *handle_connect_request(int client_socket_fd); // check cache if not present then creates new thread
 
 int proxy_run(int port) {
     int listening_socket_fd = -1;
-    int fds_array_length = 1 + MAX_CONNECTIONS * 2;
-    struct pollfd *fds_array; 
     // proxy cache
 
     fprintf(stdout, "proxy is starting ...\n");
 
-    if (open_proxy_listening_socket(listening_socket_fd, port) == -1) {
+    listening_socket_fd = open_proxy_listening_socket(listening_socket_fd, port);
+    if (listening_socket_fd == -1) {
         fprintf(stderr, "error :: cannot open proxy listening socket\n");
         proxy_stop();
         return -1;
     }
 
-    fds_array = malloc(fds_array_length * sizeof(struct pollfd));
-    memset(fds_array, -1, fds_array_length * sizeof(struct pollfd));
-
-    fds_array[0].fd = listening_socket_fd;
-    fds_array[0].events = POLLIN;
-
     fprintf(stdout, "proxy starts listening for connections ...\n");
 
     while (1) {
-        if (poll(fds_array, fds_array_length, -1) == -1) {
-            fprintf(stderr, "error :: poll() :: %s\n", strerror(errno));
-            proxy_stop();
-            return -1;
-        }
+        int client_socket_fd;
+        struct sockaddr_in client_address;
+        socklen_t client_address_length = sizeof(client_address);
+        client_address.sin_family = AF_INET;
 
-        if (fds_array[0].revents & POLLIN) {
-            if (handle_connect_request(listening_socket_fd) == -1) {
-                fprintf(stderr, "error :: cannot handle connection request\n");
-                proxy_stop();
-                return -1;
+        client_socket_fd = accept(listening_socket_fd, (struct sockaddr *) &client_address, &client_address_length);
+        if (client_socket_fd == -1) {
+            fprintf(stderr, "error :: accept() :: %s\n", strerror(errno));
+            continue;
+        }
+        else {
+            pthread_t tid;
+            pthread_attr_t attr;
+
+            pthread_attr_init(&attr);
+
+            if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) == -1) {
+                pthread_attr_destroy(&attr);
+                fprintf(stderr, "error :: pthread_attr_setdetachstate() :: %s\n", strerror(errno));
+                continue;
             }
+
+            if (pthread_create(&tid, &attr, handle_connect_request, client_socket_fd) == -1) {
+                pthread_attr_destroy(&attr);
+                fprintf(stderr, "error :: pthread_create() :: %s\n", strerror(errno));
+                continue;
+            }
+
+            pthread_attr_destroy(&attr);
         }
     }
 }
 
 int open_proxy_listening_socket(int listening_socket_fd, int port) {
-    struct sockaddr_in  listening_socket_addr;
-    listening_socket_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-    listening_socket_addr.sin_family = AF_INET;
-    listening_socket_addr.sin_port = htons(port);
+    struct sockaddr_in proxy_addr;
+    proxy_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    proxy_addr.sin_family = AF_INET;
+    proxy_addr.sin_port = htons(port);
 
     listening_socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (listening_socket_fd == -1) {
@@ -68,7 +78,7 @@ int open_proxy_listening_socket(int listening_socket_fd, int port) {
         return -1;
     }
 
-    if (bind(listening_socket_fd, (struct sockaddr *) &listening_socket_addr, sizeof(listening_socket_addr))) {
+    if (bind(listening_socket_fd, (struct sockaddr *) &proxy_addr, sizeof(proxy_addr))) {
         fprintf(stderr, "error :: bind() :: %s\n", strerror(errno));
         if (errno == EADDRINUSE) {
             fprintf(stderr, "bind() :: port is already in use\n");
@@ -81,11 +91,16 @@ int open_proxy_listening_socket(int listening_socket_fd, int port) {
         return -1;
     }
 
-    return 0;
+    return listening_socket_fd;
 }
 
-int handle_connect_request(int listening_socket_fd) {
-    return 0;
+void *handle_connect_request(int client_socket_fd) {
+    fprintf(stdout, "got new connection request on socket %d\n", client_socket_fd);
+
+    
+
+    close(client_socket_fd);
+    return NULL;
 }
 
 int proxy_stop() {
