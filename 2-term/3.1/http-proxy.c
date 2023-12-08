@@ -12,6 +12,8 @@
 
 #include "http-proxy.h"
 
+#define BUFFER_SIZE 2048
+
 // add signal hadler for ^C ^'\'
 
 int open_proxy_listening_socket(int listening_socket_fd, int port);
@@ -33,6 +35,8 @@ int proxy_run(int port) {
     fprintf(stdout, "proxy starts listening for connections ...\n");
 
     while (1) {
+        pthread_t tid;
+        pthread_attr_t attr;
         int client_socket_fd;
         struct sockaddr_in client_address;
         socklen_t client_address_length = sizeof(client_address);
@@ -43,26 +47,22 @@ int proxy_run(int port) {
             fprintf(stderr, "error :: accept() :: %s\n", strerror(errno));
             continue;
         }
-        else {
-            pthread_t tid;
-            pthread_attr_t attr;
 
-            pthread_attr_init(&attr);
+        pthread_attr_init(&attr);
 
-            if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) == -1) {
-                pthread_attr_destroy(&attr);
-                fprintf(stderr, "error :: pthread_attr_setdetachstate() :: %s\n", strerror(errno));
-                continue;
-            }
-
-            if (pthread_create(&tid, &attr, handle_connect_request, client_socket_fd) == -1) {
-                pthread_attr_destroy(&attr);
-                fprintf(stderr, "error :: pthread_create() :: %s\n", strerror(errno));
-                continue;
-            }
-
+        if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) == -1) {
             pthread_attr_destroy(&attr);
+            fprintf(stderr, "error :: pthread_attr_setdetachstate() :: %s\n", strerror(errno));
+            continue;
         }
+
+        if (pthread_create(&tid, &attr, handle_connect_request, client_socket_fd) == -1) {
+            pthread_attr_destroy(&attr);
+            fprintf(stderr, "error :: pthread_create() :: %s\n", strerror(errno));
+            continue;
+        }
+
+        pthread_attr_destroy(&attr);
     }
 }
 
@@ -80,9 +80,6 @@ int open_proxy_listening_socket(int listening_socket_fd, int port) {
 
     if (bind(listening_socket_fd, (struct sockaddr *) &proxy_addr, sizeof(proxy_addr))) {
         fprintf(stderr, "error :: bind() :: %s\n", strerror(errno));
-        if (errno == EADDRINUSE) {
-            fprintf(stderr, "bind() :: port is already in use\n");
-        }
         return -1;
     }
 
@@ -95,11 +92,74 @@ int open_proxy_listening_socket(int listening_socket_fd, int port) {
 }
 
 void *handle_connect_request(int client_socket_fd) {
+    int host_socket_fd = -1;
+    struct sockaddr_in host_address;
+    int bytes_read = 0; 
+    int bytes_written = 0;
+    char buffer[BUFFER_SIZE] = {0};
+
     fprintf(stdout, "got new connection request on socket %d\n", client_socket_fd);
 
-    
+    // read from client
+    bytes_read = read(client_socket_fd, buffer, BUFFER_SIZE);
+    if (bytes_read == -1) {
+        fprintf(stderr, "error :: read() :: %s\n", strerror(errno));
+        return NULL;
+    }
+    else if (bytes_read == 0) {
+        fprintf(stderr, "warning :: connection on socket %d has been lost\n", client_socket_fd);
+        return NULL;
+    }
+
+    // parse message
+
+
+    // connect ot host 
+    host_socket_fd = socket(AF_INET, SOCK_STREAM, 0); 
+    if (host_socket_fd == -1) {
+        fprintf(stderr, "error :: socket() :: %s\n", strerror(errno));
+        return NULL;
+    }
+    host_address.sin_family = AF_INET;
+    if (inet_pton(AF_INET, /* host address */, &(host_address.sin_addr)) == -1) {
+        fprintf(stderr, "error :: inet_pton() :: %s\n", strerror(errno));
+        return NULL;
+    }
+    host_address.sin_port = htons(/* host port */);
+
+    if (connect(host_socket_fd, (struct sockaddr *) &host_address, sizeof(host_address)) == -1) {
+        fprintf(stderr, "error :: connect() :: %s\n", strerror(errno));
+        return NULL;
+    }
+
+    // write to host
+    bytes_written = write(host_socket_fd, buffer, bytes_read);
+    if (bytes_written == -1) {
+        fprintf(stderr, "error :: write() :: %s\n", strerror(errno));
+        return NULL;
+    }
+    memset(buffer, 0, BUFFER_SIZE);
+
+    // read from host
+    bytes_read = read(host_socket_fd, buffer, BUFFER_SIZE);
+    if (bytes_read == -1) {
+        fprintf(stderr, "error :: read() :: %s\n", strerror(errno));
+        return NULL;
+    }
+    else if (bytes_read == 0) {
+        fprintf(stderr, "warning :: connection on socket %d has been lost\n", client_socket_fd);
+        return NULL;
+    }
+
+    // write response to client
+    bytes_written = write(client_socket_fd, buffer, bytes_read);
+    if (bytes_written == -1) {
+        fprintf(stderr, "error :: write() :: %s\n", strerror(errno));
+        return NULL;
+    }
 
     close(client_socket_fd);
+    close(host_socket_fd);
     return NULL;
 }
 

@@ -3,7 +3,7 @@ SRCS_1 = http-proxy.c main.c
 
 CC=gcc
 RM=rm
-CFLAGS= -g -Wall
+CFLAGS= -g -w
 LIBS=-lpthread
 INCLUDE_DIR="."
 
