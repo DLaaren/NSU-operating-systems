@@ -19,6 +19,7 @@
 #define ELOG(...) \
     fprintf(stderr, __VA_ARGS__);
 
+#define MAX_CONNECTIONS 10
 #define BUFFER_SIZE 2048
 #define DEFAULT_PORT "80"
 
@@ -61,12 +62,14 @@ int proxy_run(int port) {
 
         if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) == -1) {
             pthread_attr_destroy(&attr);
+            close(client_socket_fd);
             ELOG("error :: pthread_attr_setdetachstate() :: %s\n", strerror(errno));
             continue;
         }
 
         if (pthread_create(&tid, &attr, handle_connect_request, client_socket_fd) == -1) {
             pthread_attr_destroy(&attr);
+            close(client_socket_fd);
             ELOG("error :: pthread_create() :: %s\n", strerror(errno));
             continue;
         }
@@ -106,20 +109,18 @@ int open_proxy_listening_socket(int listening_socket_fd, int port) {
 }
 
 // TODO
-// разобраться с первым while
 // добавить signal handlers
 // добавить кэш
 
 
 void *handle_connect_request(int client_socket_fd) {
-    int err = 0;
     int host_socket_fd = -1;
     struct sockaddr_in host_address;
     char host_ip[16] = {0};
     char host_port[8] = {0};
     int bytes_read = 0; 
     int bytes_written = 0;
-    char buffer[BUFFER_SIZE] = {0};
+    char *buffer = malloc(BUFFER_SIZE * sizeof(char));
 
     LOG("got new connection request on socket %d\n", client_socket_fd);
 
@@ -128,26 +129,30 @@ void *handle_connect_request(int client_socket_fd) {
     if (bytes_read == -1) {
         ELOG("error :: read() :: %s\n", strerror(errno));
         close(client_socket_fd);
+        free(buffer);
         return NULL;
     }
     else if (bytes_read == 0) {
         ELOG("warning :: connection on socket %d has been lost\n", client_socket_fd);
         close(client_socket_fd);
+        free(buffer);
         return NULL;
     }
 
     if (parse_http_request(buffer, bytes_read, host_ip, sizeof(host_ip), host_port) == -1) {
         ELOG("error :: parse_http_request()\n");
         close(client_socket_fd);
+        free(buffer);
         return NULL;
     }
 
-    LOG("trying connect to host :: %s:%s\n", host_ip, host_port);
+    LOG("trying connect to host :: %s:%s on socket %d\n", host_ip, host_port, client_socket_fd);
     
     host_socket_fd = socket(AF_INET, SOCK_STREAM, 0); 
     if (host_socket_fd == -1) {
         ELOG("error :: socket() :: %s\n", strerror(errno));
         close(client_socket_fd);
+        free(buffer);
         return NULL;
     }
 
@@ -157,6 +162,7 @@ void *handle_connect_request(int client_socket_fd) {
         ELOG("error :: inet_pton() :: %s\n", strerror(errno));
         close(client_socket_fd);
         close(host_socket_fd);
+        free(buffer);
         return NULL;
     }
 
@@ -166,10 +172,11 @@ void *handle_connect_request(int client_socket_fd) {
         ELOG("error :: connect() :: %s\n", strerror(errno));
         close(client_socket_fd);
         close(host_socket_fd);
+        free(buffer);
         return NULL;
     }
 
-    LOG("connection on socket %d has been successful\n", client_socket_fd);
+    LOG("connection to host %s:%s on socket %d has been successful\n",  host_ip, host_port, client_socket_fd);
 
     // write to host
     bytes_written = write(host_socket_fd, buffer, bytes_read);
@@ -177,33 +184,9 @@ void *handle_connect_request(int client_socket_fd) {
         ELOG("error :: write() :: %s\n", strerror(errno));
         close(client_socket_fd);
         close(host_socket_fd);
+        free(buffer);
         return NULL;
     }
-
-    // while (bytes_read > 0) {
-    //     // read from client
-    //     fprintf(stderr, "cataplism\n");
-    //     bytes_read = read(client_socket_fd, buffer, BUFFER_SIZE);
-    //     fprintf(stderr, "AVAOBJAJB\n");
-    //     if (bytes_read == -1) {
-    //         fprintf(stderr, "error :: read() :: %s\n", strerror(errno));
-    //         close(client_socket_fd);
-    //         close(host_socket_fd);
-    //         return NULL;
-    //     }
-    //     else if (bytes_read == 0) {
-    //         break;
-    //     }
-
-    //     // write to host
-    //     bytes_written = write(host_socket_fd, buffer, bytes_read);
-    //     if (bytes_written == -1) {
-    //         fprintf(stderr, "error :: write() :: %s\n", strerror(errno));
-    //         close(client_socket_fd);
-    //         close(host_socket_fd);
-    //         return NULL;
-    //     }
-    // } 
 
     do {
         // read from host
@@ -212,6 +195,7 @@ void *handle_connect_request(int client_socket_fd) {
             ELOG("error :: read() :: %s\n", strerror(errno));
             close(client_socket_fd);
             close(host_socket_fd);
+            free(buffer);
             return NULL;
         }
         else if (bytes_read == 0) {
@@ -224,6 +208,7 @@ void *handle_connect_request(int client_socket_fd) {
             ELOG("error :: write() :: %s\n", strerror(errno));
             close(client_socket_fd);
             close(host_socket_fd);
+            free(buffer);
             return NULL;
         }
 
@@ -233,25 +218,29 @@ void *handle_connect_request(int client_socket_fd) {
 
     close(client_socket_fd);
     close(host_socket_fd);
+    free(buffer);
     return NULL;
 }
 
 int parse_http_request(char *buffer, int buffer_len, char *ip, int ip_length, char *port) {
-    int pret;
+    int err, pret;
     struct phr_header headers[100];
     size_t num_headers = 100;
     char *method, *path;
     int minor_version;
     size_t method_len, path_len;
-    char tmp[16];
+    char tmp[256];
     struct addrinfo hints;
-    struct addrinfo* result, * rp;
+    struct addrinfo *result;
 
     pret = phr_parse_request(buffer, buffer_len, &method, &method_len, &path, &path_len,
                              &minor_version, headers, &num_headers, 0);
     if (pret == -1) {
+        ELOG("error :: phr_parse_request()\n");
         return -1;
     }
+
+    // change to strcmp
 
     size_t i;
     for (i = 0; i < num_headers; i++) {
@@ -265,7 +254,7 @@ int parse_http_request(char *buffer, int buffer_len, char *ip, int ip_length, ch
 
     sprintf(tmp, "%.*s", (int)headers[i].value_len, headers[i].value);
 
-    // printf("tmp :: %s\n", tmp);
+    // LOG("CHECK :: %s\n\n", buffer);
 
     if (strstr(tmp, ":") != NULL) {
         strcpy(ip, strtok(tmp, ":"));
@@ -280,16 +269,18 @@ int parse_http_request(char *buffer, int buffer_len, char *ip, int ip_length, ch
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
 
-    if (getaddrinfo(ip, NULL, &hints, &result) == -1) {
-        ELOG("error :: geaddrinfo() :: %s\n", strerror(errno));
+    LOG("trying to resolve ip :: %s\n", ip);
+
+    if ((err = getaddrinfo(ip, "http", &hints, &result)) != 0) {
+        ELOG("error :: getaddrinfo() :: %s :: %s\n", strerror(errno), gai_strerror(err));
         return -1;
     }
 
-    memset(ip, 0, ip_length);
+    memset(ip, 0, ip_length);    
 
-    for (rp = result; rp != NULL; rp = rp->ai_next) {
-        struct sockaddr_in* ipv4 = (struct sockaddr_in*)rp->ai_addr;
-        void* addr = &(ipv4->sin_addr);
+    for (struct addrinfo *rp = result; rp != NULL; rp = rp->ai_next) {
+        struct sockaddr_in* curr_addr = (struct sockaddr_in*)rp->ai_addr;
+        void* addr = &(curr_addr->sin_addr);
 
         if (inet_ntop(AF_INET, addr, ip, ip_length) != NULL) {
             freeaddrinfo(result);
@@ -303,6 +294,7 @@ int parse_http_request(char *buffer, int buffer_len, char *ip, int ip_length, ch
     }
 
     freeaddrinfo(result);
+    ELOG("error :: cannot resolve domain name\n");
     return -1;
 }
 
