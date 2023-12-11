@@ -13,15 +13,19 @@
 
 #include "http-proxy.h"
 #include "picohttpparser.h"
+#include "map.h"
 
 #define LOG(...) \
     fprintf(stdout, __VA_ARGS__);
 #define ELOG(...) \
     fprintf(stderr, __VA_ARGS__);
 
-#define MAX_CONNECTIONS 10
-#define BUFFER_SIZE 2048
+#define MAX_CONNECTIONS 100
+#define BUFFER_SIZE 4096
 #define DEFAULT_PORT "80"
+#define CACHE_PAGES 10
+
+map_str_t map;
 
 // add signal hadler for ^C ^'\'
 
@@ -41,6 +45,8 @@ int proxy_run(int port) {
         proxy_stop(listening_socket_fd);
         return -1;
     }
+
+    map_init(&map);
 
     LOG("proxy starts listening for connections ...\n");
 
@@ -121,6 +127,8 @@ void *handle_connect_request(int client_socket_fd) {
     int bytes_read = 0; 
     int bytes_written = 0;
     char *buffer = malloc(BUFFER_SIZE * sizeof(char));
+    char *buffer_in_cache_ptr = NULL;
+    int total_bytes_sent = 0;
 
     LOG("got new connection request on socket %d\n", client_socket_fd);
 
@@ -144,6 +152,26 @@ void *handle_connect_request(int client_socket_fd) {
         close(client_socket_fd);
         free(buffer);
         return NULL;
+    }
+
+    if ((buffer_in_cache_ptr = map_get(&map, host_ip)) != NULL) {
+        bytes_written = write(client_socket_fd, buffer, bytes_read);
+        if (bytes_written == -1) {
+            ELOG("error :: write() :: %s\n", strerror(errno));
+            close(client_socket_fd);
+            free(buffer);
+            return NULL;
+        }
+        total_bytes_sent+= bytes_written;
+
+        LOG("TOTAL BYTES SENT %d\n", total_bytes_sent);
+
+        LOG("closing connection on socket %d\n", client_socket_fd)
+
+        close(client_socket_fd);
+        free(buffer);
+        return NULL;
+
     }
 
     LOG("trying connect to host :: %s:%s on socket %d\n", host_ip, host_port, client_socket_fd);
@@ -187,21 +215,10 @@ void *handle_connect_request(int client_socket_fd) {
         free(buffer);
         return NULL;
     }
+    total_bytes_sent+= bytes_written;
 
-    do {
-        // read from host
-        bytes_read = read(host_socket_fd, buffer, BUFFER_SIZE);
-        if (bytes_read == -1) {
-            ELOG("error :: read() :: %s\n", strerror(errno));
-            close(client_socket_fd);
-            close(host_socket_fd);
-            free(buffer);
-            return NULL;
-        }
-        else if (bytes_read == 0) {
-            break;
-        }
-
+    // read from host
+    while((bytes_read = read(host_socket_fd, buffer, BUFFER_SIZE)) > 0) {
         // write response to client
         bytes_written = write(client_socket_fd, buffer, bytes_read);
         if (bytes_written == -1) {
@@ -211,8 +228,10 @@ void *handle_connect_request(int client_socket_fd) {
             free(buffer);
             return NULL;
         }
+        total_bytes_sent+= bytes_written;
+    }
 
-    } while (bytes_read > 0);
+    LOG("TOTAL BYTES SENT %d\n", total_bytes_sent);
 
     LOG("closing connection on socket %d\n", client_socket_fd)
 
@@ -254,8 +273,6 @@ int parse_http_request(char *buffer, int buffer_len, char *ip, int ip_length, ch
 
     sprintf(tmp, "%.*s", (int)headers[i].value_len, headers[i].value);
 
-    // LOG("CHECK :: %s\n\n", buffer);
-
     if (strstr(tmp, ":") != NULL) {
         strcpy(ip, strtok(tmp, ":"));
         strcpy(port, strtok(NULL, ":"));
@@ -265,6 +282,11 @@ int parse_http_request(char *buffer, int buffer_len, char *ip, int ip_length, ch
         strcpy(port, DEFAULT_PORT);
     }
 
+    if (strcmp(port, DEFAULT_PORT) != 0) { 
+        ELOG("warning :: get port which is default for unsupported protocol\n");
+        // return -1;
+    }
+
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
@@ -272,7 +294,7 @@ int parse_http_request(char *buffer, int buffer_len, char *ip, int ip_length, ch
     LOG("trying to resolve ip :: %s\n", ip);
 
     if ((err = getaddrinfo(ip, "http", &hints, &result)) != 0) {
-        ELOG("error :: getaddrinfo() :: %s :: %s\n", strerror(errno), gai_strerror(err));
+        ELOG("error :: getaddrinfo() :: %s\n", gai_strerror(err));
         return -1;
     }
 
@@ -299,6 +321,7 @@ int parse_http_request(char *buffer, int buffer_len, char *ip, int ip_length, ch
 }
 
 int proxy_stop(int listening_socket_fd) {
+    map_deinit(&map);
     close(listening_socket_fd);
     return 0;
 }
