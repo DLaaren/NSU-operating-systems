@@ -23,19 +23,28 @@
 #define MAX_CONNECTIONS 100
 #define BUFFER_SIZE 4096
 #define DEFAULT_PORT "80"
-#define CACHE_PAGES 10
+#define CACHE_SIZE 10
+
+typedef struct cache_page {
+    size_t message_size;
+    char *message;
+} cache_page;
 
 map_str_t map;
+size_t curr_cache_size;
+pthread_mutex_t map_mutex;
 
-// add signal hadler for ^C ^'\'
+// TODO
+// добавить signal handlers
+// добавить кэш
 
 int open_proxy_listening_socket(int listening_socket_fd, int port);
 int parse_http_request(char *buffer, int buffer_len, char *ip, int ip_length, char *port);
 void *handle_connect_request(int client_socket_fd);
 
+
 int proxy_run(int port) {
     int listening_socket_fd = -1;
-    // proxy cache
 
     LOG("proxy is starting ...\n");
 
@@ -47,6 +56,7 @@ int proxy_run(int port) {
     }
 
     map_init(&map);
+    pthread_mutex_init(&map_mutex, NULL);
 
     LOG("proxy starts listening for connections ...\n");
 
@@ -84,6 +94,7 @@ int proxy_run(int port) {
     }
 }
 
+
 int open_proxy_listening_socket(int listening_socket_fd, int port) {
     struct sockaddr_in proxy_addr;
     proxy_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
@@ -114,21 +125,19 @@ int open_proxy_listening_socket(int listening_socket_fd, int port) {
     return listening_socket_fd;
 }
 
-// TODO
-// добавить signal handlers
-// добавить кэш
-
 
 void *handle_connect_request(int client_socket_fd) {
+    int ret = 0;
     int host_socket_fd = -1;
     struct sockaddr_in host_address;
     char host_ip[16] = {0};
     char host_port[8] = {0};
     int bytes_read = 0; 
     int bytes_written = 0;
-    char *buffer = malloc(BUFFER_SIZE * sizeof(char));
-    char *buffer_in_cache_ptr = NULL;
+    char *buffer = (char *)malloc(BUFFER_SIZE * sizeof(char));
+    char *cache_ptr = NULL;
     int total_bytes_sent = 0;
+    int total_bytes_read = 0;
 
     LOG("got new connection request on socket %d\n", client_socket_fd);
 
@@ -147,6 +156,7 @@ void *handle_connect_request(int client_socket_fd) {
         return NULL;
     }
 
+    // parse message
     if (parse_http_request(buffer, bytes_read, host_ip, sizeof(host_ip), host_port) == -1) {
         ELOG("error :: parse_http_request()\n");
         close(client_socket_fd);
@@ -154,73 +164,59 @@ void *handle_connect_request(int client_socket_fd) {
         return NULL;
     }
 
-    if ((buffer_in_cache_ptr = map_get(&map, host_ip)) != NULL) {
-        bytes_written = write(client_socket_fd, buffer, bytes_read);
+    // check cache
+    if ((cache_ptr = map_get(&map, host_ip)) != NULL) {
+        LOG("HASH HIT\n");
+
+        cache_page *cache = (cache_page *) cache_ptr;
+
+        bytes_written = write(client_socket_fd, cache_ptr->message, cache->message_size);
         if (bytes_written == -1) {
             ELOG("error :: write() :: %s\n", strerror(errno));
+            close(client_socket_fd);
+            close(host_socket_fd);
+            return NULL;
+        }
+        // used +1
+        free(buffer);
+    } 
+    else {
+        cache_page *new_cache_page;
+        LOG("HASH MISS\n");
+        LOG("trying connect to host :: %s:%s on socket %d\n", host_ip, host_port, client_socket_fd);
+
+        host_socket_fd = socket(AF_INET, SOCK_STREAM, 0); 
+        if (host_socket_fd == -1) {
+            ELOG("error :: socket() :: %s\n", strerror(errno));
             close(client_socket_fd);
             free(buffer);
             return NULL;
         }
-        total_bytes_sent+= bytes_written;
 
-        LOG("TOTAL BYTES SENT %d\n", total_bytes_sent);
+        host_address.sin_family = AF_INET;
 
-        LOG("closing connection on socket %d\n", client_socket_fd)
+        if (inet_pton(AF_INET, host_ip, &(host_address.sin_addr)) == -1) {
+            ELOG("error :: inet_pton() :: %s\n", strerror(errno));
+            close(client_socket_fd);
+            close(host_socket_fd);
+            free(buffer);
+            return NULL;
+        }
 
-        close(client_socket_fd);
-        free(buffer);
-        return NULL;
+        host_address.sin_port = htons(atoi(host_port));
 
-    }
+        if (connect(host_socket_fd, (struct sockaddr *) &host_address, sizeof(host_address)) == -1) {
+            ELOG("error :: connect() :: %s\n", strerror(errno));
+            close(client_socket_fd);
+            close(host_socket_fd);
+            free(buffer);
+            return NULL;
+        }
 
-    LOG("trying connect to host :: %s:%s on socket %d\n", host_ip, host_port, client_socket_fd);
-    
-    host_socket_fd = socket(AF_INET, SOCK_STREAM, 0); 
-    if (host_socket_fd == -1) {
-        ELOG("error :: socket() :: %s\n", strerror(errno));
-        close(client_socket_fd);
-        free(buffer);
-        return NULL;
-    }
+        LOG("connection to host %s:%s on socket %d has been successful\n",  host_ip, host_port, client_socket_fd);
 
-    host_address.sin_family = AF_INET;
-
-    if (inet_pton(AF_INET, host_ip, &(host_address.sin_addr)) == -1) {
-        ELOG("error :: inet_pton() :: %s\n", strerror(errno));
-        close(client_socket_fd);
-        close(host_socket_fd);
-        free(buffer);
-        return NULL;
-    }
-
-    host_address.sin_port = htons(atoi(host_port));
-
-    if (connect(host_socket_fd, (struct sockaddr *) &host_address, sizeof(host_address)) == -1) {
-        ELOG("error :: connect() :: %s\n", strerror(errno));
-        close(client_socket_fd);
-        close(host_socket_fd);
-        free(buffer);
-        return NULL;
-    }
-
-    LOG("connection to host %s:%s on socket %d has been successful\n",  host_ip, host_port, client_socket_fd);
-
-    // write to host
-    bytes_written = write(host_socket_fd, buffer, bytes_read);
-    if (bytes_written == -1) {
-        ELOG("error :: write() :: %s\n", strerror(errno));
-        close(client_socket_fd);
-        close(host_socket_fd);
-        free(buffer);
-        return NULL;
-    }
-    total_bytes_sent+= bytes_written;
-
-    // read from host
-    while((bytes_read = read(host_socket_fd, buffer, BUFFER_SIZE)) > 0) {
-        // write response to client
-        bytes_written = write(client_socket_fd, buffer, bytes_read);
+        // write to host
+        bytes_written = write(host_socket_fd, buffer, bytes_read);
         if (bytes_written == -1) {
             ELOG("error :: write() :: %s\n", strerror(errno));
             close(client_socket_fd);
@@ -228,17 +224,111 @@ void *handle_connect_request(int client_socket_fd) {
             free(buffer);
             return NULL;
         }
-        total_bytes_sent+= bytes_written;
+
+        // read all from host
+        total_bytes_read = 0;
+        while ((bytes_read = read(host_socket_fd, buffer + total_bytes_read, BUFFER_SIZE - total_bytes_read / BUFFER_SIZE)) > 0) {
+            total_bytes_read += bytes_read;
+            if (BUFFER_SIZE - total_bytes_read / BUFFER_SIZE == 0) {
+                buffer = (char *)realloc(buffer, total_bytes_read + BUFFER_SIZE);
+                if (buffer == NULL) {
+                    ELOG("error :: realloc() :: %s\n", strerror(errno));
+                    close(client_socket_fd);
+                    close(host_socket_fd);
+                    free(buffer);
+                    return NULL;
+                }
+            }
+        } 
+
+        // write all to client
+        bytes_written = write(client_socket_fd, buffer, total_bytes_read);
+        if (bytes_written == -1) {
+            ELOG("error :: write() :: %s\n", strerror(errno));
+            close(client_socket_fd);
+            close(host_socket_fd);
+            free(buffer);
+            return NULL;
+        }
+
+        // create new cache page
+        new_cache_page = (cache_page *)malloc(1 * sizeof(cache_page));
+        new_cache_page->message = buffer;
+        new_cache_page->message_size = total_bytes_read;
+
+        // check cache size
+        if (curr_cache_size < CACHE_SIZE) {
+            map_set(&map, host_ip, new_cache_page);
+        }
+        else {
+
+        }
     }
 
-    LOG("TOTAL BYTES SENT %d\n", total_bytes_sent);
-
-    LOG("closing connection on socket %d\n", client_socket_fd)
+    LOG("closing connection on socket %d\n", client_socket_fd);
 
     close(client_socket_fd);
     close(host_socket_fd);
-    free(buffer);
     return NULL;
+
+    // pthread_mutex_lock(&map_mutex);
+    // if ((buffer_in_cache_ptr = map_get(&map, host_ip)) != NULL) {
+
+    //     LOG("HASH HIT %s\n", buffer_in_cache_ptr);
+
+    //     int msg_size = atoi(buffer_in_cache_ptr[0]);
+
+    //     LOG("MSG SIZE %d\n", msg_size);
+
+    //     bytes_written = write(client_socket_fd, buffer_in_cache_ptr, msg_size);
+    //     pthread_mutex_unlock(&map_mutex);
+    //     if (bytes_written == -1) {
+    //         ELOG("error :: write() :: %s\n", strerror(errno));
+    //         close(client_socket_fd);
+    //         return NULL;
+    //     }
+    //     total_bytes_sent+= bytes_written;
+
+    //     LOG("TOTAL BYTES SENT %d\n", total_bytes_sent);
+
+    //     LOG("closing connection on socket %d\n", client_socket_fd);
+
+    //     close(client_socket_fd);
+    //     return NULL;
+    // }
+
+    // pthread_mutex_unlock(&map_mutex);
+
+
+    // read all from host
+    // while((bytes_read = read(host_socket_fd, buffer + total_bytes_read, BUFFER_SIZE - total_bytes_read)) > 0) {
+    //     total_bytes_read += bytes_read;
+    //     if (BUFFER_SIZE - total_bytes_read - 1 == 0) {
+    //         buffer = (char *)realloc(buffer, 1 + total_bytes_read + BUFFER_SIZE);
+    //         if (buffer == NULL) {
+    //             ELOG("БЕДААА\n");
+    //         }
+    //     }
+    // }
+
+    // LOG("TOTAL BYTES READ %d\n", total_bytes_read);
+
+    // // write response to client
+    // bytes_written = write(client_socket_fd, buffer + 1, total_bytes_read);
+    // if (bytes_written == -1) {
+    //     ELOG("error :: write() :: %s\n", strerror(errno));
+    //     close(client_socket_fd);
+    //     close(host_socket_fd);
+    //     return NULL;
+    // }
+    // total_bytes_sent+= bytes_written;
+
+    // LOG("TOTAL BYTES SENT %d\n", total_bytes_sent);
+
+    // LOG("closing connection on socket %d\n", client_socket_fd);
+
+    // map_set(&map, host_ip, buffer);
+
 }
 
 int parse_http_request(char *buffer, int buffer_len, char *ip, int ip_length, char *port) {
