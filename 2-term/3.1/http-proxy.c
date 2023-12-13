@@ -14,25 +14,31 @@
 #include "http-proxy.h"
 #include "picohttpparser.h"
 #include "map.h"
+#include "pqueue.h"
 
 #define LOG(...) \
     fprintf(stdout, __VA_ARGS__);
 #define ELOG(...) \
     fprintf(stderr, __VA_ARGS__);
 
-#define MAX_CONNECTIONS 100
+#define MAX_CONNECTIONS 10
 #define BUFFER_SIZE 4096
 #define DEFAULT_PORT "80"
 #define CACHE_SIZE 10
 
 typedef struct cache_page {
+    pthread_mutex_t page_mutex;
+    size_t times_used;
+    char host_ip[16];
     size_t message_size;
     char *message;
 } cache_page;
 
-map_str_t map;
-size_t curr_cache_size;
-pthread_mutex_t map_mutex;
+static map_void_t map;
+static size_t curr_cache_size;
+static pthread_mutex_t global_mutex;
+
+static PQueue *pqueue;
 
 // TODO
 // добавить signal handlers
@@ -41,22 +47,30 @@ pthread_mutex_t map_mutex;
 int open_proxy_listening_socket(int listening_socket_fd, int port);
 int parse_http_request(char *buffer, int buffer_len, char *ip, int ip_length, char *port);
 void *handle_connect_request(int client_socket_fd);
+int pqueue_cmp(const void *d1, const void *d2);
 
 
 int proxy_run(int port) {
     int listening_socket_fd = -1;
-
     LOG("proxy is starting ...\n");
 
     listening_socket_fd = open_proxy_listening_socket(listening_socket_fd, port);
     if (listening_socket_fd == -1) {
         ELOG("error :: cannot open proxy listening socket\n");
-        proxy_stop(listening_socket_fd);
+        close(listening_socket_fd);
         return -1;
     }
 
     map_init(&map);
-    pthread_mutex_init(&map_mutex, NULL);
+    pthread_mutex_init(&global_mutex, NULL);
+    pqueue = pqueue_new(&pqueue_cmp, CACHE_SIZE);
+    if (pqueue == NULL) {
+        ELOG("error :: cannot open proxy listening socket\n");
+        close(listening_socket_fd);
+        map_deinit(&map);
+        pthread_mutex_destroy(&global_mutex);
+        return -1;
+    }
 
     LOG("proxy starts listening for connections ...\n");
 
@@ -77,21 +91,22 @@ int proxy_run(int port) {
         pthread_attr_init(&attr);
 
         if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) == -1) {
+            ELOG("error :: pthread_attr_setdetachstate() :: %s\n", strerror(errno));
             pthread_attr_destroy(&attr);
             close(client_socket_fd);
-            ELOG("error :: pthread_attr_setdetachstate() :: %s\n", strerror(errno));
             continue;
         }
 
         if (pthread_create(&tid, &attr, handle_connect_request, client_socket_fd) == -1) {
+            ELOG("error :: pthread_create() :: %s\n", strerror(errno));
             pthread_attr_destroy(&attr);
             close(client_socket_fd);
-            ELOG("error :: pthread_create() :: %s\n", strerror(errno));
             continue;
         }
 
         pthread_attr_destroy(&attr);
     }
+    proxy_stop();
 }
 
 
@@ -168,20 +183,29 @@ void *handle_connect_request(int client_socket_fd) {
     if ((cache_ptr = map_get(&map, host_ip)) != NULL) {
         LOG("HASH HIT\n");
 
-        cache_page *cache = (cache_page *) cache_ptr;
+        cache_page *cache = (cache_page *)cache_ptr;
 
-        bytes_written = write(client_socket_fd, cache_ptr->message, cache->message_size);
+                LOG("\n\nBUFFER ::\n%s\n", cache->message);
+
+                LOG("TOTAL BYTES %d\n\n\n", cache->message_size);
+                sleep(1000);
+
+        bytes_written = write(client_socket_fd, cache->message, cache->message_size);
         if (bytes_written == -1) {
             ELOG("error :: write() :: %s\n", strerror(errno));
             close(client_socket_fd);
             close(host_socket_fd);
             return NULL;
         }
-        // used +1
+        cache->times_used += 1;
+
+        LOG("closing connection on socket %d\n", client_socket_fd);
+
         free(buffer);
+        close(client_socket_fd);
     } 
     else {
-        cache_page *new_cache_page;
+        cache_page *new_cache_page = NULL;
         LOG("HASH MISS\n");
         LOG("trying connect to host :: %s:%s on socket %d\n", host_ip, host_port, client_socket_fd);
 
@@ -227,9 +251,11 @@ void *handle_connect_request(int client_socket_fd) {
 
         // read all from host
         total_bytes_read = 0;
-        while ((bytes_read = read(host_socket_fd, buffer + total_bytes_read, BUFFER_SIZE - total_bytes_read / BUFFER_SIZE)) > 0) {
+        int space_left = BUFFER_SIZE;
+        while ((bytes_read = read(host_socket_fd, buffer + total_bytes_read, space_left)) > 0) {
             total_bytes_read += bytes_read;
-            if (BUFFER_SIZE - total_bytes_read / BUFFER_SIZE == 0) {
+            space_left -= bytes_read;
+            if (space_left == 0) {
                 buffer = (char *)realloc(buffer, total_bytes_read + BUFFER_SIZE);
                 if (buffer == NULL) {
                     ELOG("error :: realloc() :: %s\n", strerror(errno));
@@ -238,8 +264,13 @@ void *handle_connect_request(int client_socket_fd) {
                     free(buffer);
                     return NULL;
                 }
+                space_left = BUFFER_SIZE;
             }
         } 
+
+        // LOG("\n\nBUFFER ::\n%s\n\n", buffer);
+
+        // LOG("TOTAL BYTES READ %d\n", total_bytes_read);
 
         // write all to client
         bytes_written = write(client_socket_fd, buffer, total_bytes_read);
@@ -251,84 +282,54 @@ void *handle_connect_request(int client_socket_fd) {
             return NULL;
         }
 
+        close(client_socket_fd);
+        close(host_socket_fd);
+
+        LOG("closing connection on socket %d\n", client_socket_fd);
+
+        LOG("creating cache for %s\n", host_ip);
+
         // create new cache page
         new_cache_page = (cache_page *)malloc(1 * sizeof(cache_page));
         new_cache_page->message = buffer;
         new_cache_page->message_size = total_bytes_read;
+        new_cache_page->times_used = 1;
+        pthread_mutex_init(&(new_cache_page->page_mutex), NULL);
+        strcpy(new_cache_page->host_ip, host_ip);
+
+                LOG("\n\nBUFFER ::\n%s\n\n", new_cache_page->message);
+
+        LOG("TOTAL BYTES READ %d\n", new_cache_page->message_size);
+
 
         // check cache size
-        if (curr_cache_size < CACHE_SIZE) {
-            map_set(&map, host_ip, new_cache_page);
+        if (curr_cache_size == CACHE_SIZE) {
+            // printf("ABABOBA\n\n");
+            cache_page *cache_page_to_delete = (cache_page *)pqueue_dequeue(pqueue);
+            if (cache_page_to_delete == NULL) {
+                ELOG("error :: pqueue_dequeue()\n"); 
+                free(buffer);
+                free(new_cache_page);
+                return NULL;
+            }
+            free(cache_page_to_delete->message);
+            pthread_mutex_destroy(&(new_cache_page->page_mutex));
+            map_remove_(&map, &(cache_page_to_delete->host_ip));
+            curr_cache_size--;
         }
-        else {
 
+        // add in cache
+        if (map_set(&map, host_ip, new_cache_page) == -1) {
+            ELOG("error :: map_set()\n");
+            free(buffer);
+            free(new_cache_page);
+            return NULL;
         }
+        pqueue_enqueue(pqueue, (void *)new_cache_page);
+        curr_cache_size++;
     }
 
-    LOG("closing connection on socket %d\n", client_socket_fd);
-
-    close(client_socket_fd);
-    close(host_socket_fd);
     return NULL;
-
-    // pthread_mutex_lock(&map_mutex);
-    // if ((buffer_in_cache_ptr = map_get(&map, host_ip)) != NULL) {
-
-    //     LOG("HASH HIT %s\n", buffer_in_cache_ptr);
-
-    //     int msg_size = atoi(buffer_in_cache_ptr[0]);
-
-    //     LOG("MSG SIZE %d\n", msg_size);
-
-    //     bytes_written = write(client_socket_fd, buffer_in_cache_ptr, msg_size);
-    //     pthread_mutex_unlock(&map_mutex);
-    //     if (bytes_written == -1) {
-    //         ELOG("error :: write() :: %s\n", strerror(errno));
-    //         close(client_socket_fd);
-    //         return NULL;
-    //     }
-    //     total_bytes_sent+= bytes_written;
-
-    //     LOG("TOTAL BYTES SENT %d\n", total_bytes_sent);
-
-    //     LOG("closing connection on socket %d\n", client_socket_fd);
-
-    //     close(client_socket_fd);
-    //     return NULL;
-    // }
-
-    // pthread_mutex_unlock(&map_mutex);
-
-
-    // read all from host
-    // while((bytes_read = read(host_socket_fd, buffer + total_bytes_read, BUFFER_SIZE - total_bytes_read)) > 0) {
-    //     total_bytes_read += bytes_read;
-    //     if (BUFFER_SIZE - total_bytes_read - 1 == 0) {
-    //         buffer = (char *)realloc(buffer, 1 + total_bytes_read + BUFFER_SIZE);
-    //         if (buffer == NULL) {
-    //             ELOG("БЕДААА\n");
-    //         }
-    //     }
-    // }
-
-    // LOG("TOTAL BYTES READ %d\n", total_bytes_read);
-
-    // // write response to client
-    // bytes_written = write(client_socket_fd, buffer + 1, total_bytes_read);
-    // if (bytes_written == -1) {
-    //     ELOG("error :: write() :: %s\n", strerror(errno));
-    //     close(client_socket_fd);
-    //     close(host_socket_fd);
-    //     return NULL;
-    // }
-    // total_bytes_sent+= bytes_written;
-
-    // LOG("TOTAL BYTES SENT %d\n", total_bytes_sent);
-
-    // LOG("closing connection on socket %d\n", client_socket_fd);
-
-    // map_set(&map, host_ip, buffer);
-
 }
 
 int parse_http_request(char *buffer, int buffer_len, char *ip, int ip_length, char *port) {
@@ -410,8 +411,11 @@ int parse_http_request(char *buffer, int buffer_len, char *ip, int ip_length, ch
     return -1;
 }
 
+int pqueue_cmp(const void *d1, const void *d2) {
+    return 1;
+}
+
 int proxy_stop(int listening_socket_fd) {
-    map_deinit(&map);
     close(listening_socket_fd);
     return 0;
 }
