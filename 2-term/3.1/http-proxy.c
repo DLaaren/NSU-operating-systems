@@ -186,9 +186,9 @@ void *handle_connect_request(int client_socket_fd) {
     if ((cache_ptr = map_get(&map, host_ip)) != NULL) {
         LOG("HASH HIT\n");
 
-        LOG("HOST :: %s\n", cache_ptr->host_ip);
-        LOG("BUFFER SIZE :: %d\n", cache_ptr->message_size);
-        LOG("TIMES USED :: %d\n", cache_ptr->times_used);
+        // LOG("HOST :: %s\n", cache_ptr->host_ip);
+        // LOG("BUFFER SIZE :: %d\n", cache_ptr->message_size);
+        // LOG("TIMES USED :: %d\n", cache_ptr->times_used);
 
         bytes_written = write(client_socket_fd, cache_ptr->message, cache_ptr->message_size);
         if (bytes_written == -1) {
