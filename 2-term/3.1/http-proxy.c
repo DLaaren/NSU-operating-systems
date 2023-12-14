@@ -22,7 +22,7 @@
     fprintf(stderr, __VA_ARGS__);
 
 #define MAX_CONNECTIONS 10
-#define BUFFER_SIZE 4096
+#define BUFFER_SIZE 2048
 #define DEFAULT_PORT "80"
 #define CACHE_SIZE 10
 
@@ -105,6 +105,8 @@ int proxy_run(int port) {
         }
 
         pthread_attr_destroy(&attr);
+
+        sleep(100);
     }
     proxy_stop();
 }
@@ -185,11 +187,6 @@ void *handle_connect_request(int client_socket_fd) {
 
         cache_page *cache = (cache_page *)cache_ptr;
 
-                LOG("\n\nBUFFER ::\n%s\n", cache->message);
-
-                LOG("TOTAL BYTES %d\n\n\n", cache->message_size);
-                sleep(1000);
-
         bytes_written = write(client_socket_fd, cache->message, cache->message_size);
         if (bytes_written == -1) {
             ELOG("error :: write() :: %s\n", strerror(errno));
@@ -268,10 +265,6 @@ void *handle_connect_request(int client_socket_fd) {
             }
         } 
 
-        // LOG("\n\nBUFFER ::\n%s\n\n", buffer);
-
-        // LOG("TOTAL BYTES READ %d\n", total_bytes_read);
-
         // write all to client
         bytes_written = write(client_socket_fd, buffer, total_bytes_read);
         if (bytes_written == -1) {
@@ -297,14 +290,8 @@ void *handle_connect_request(int client_socket_fd) {
         pthread_mutex_init(&(new_cache_page->page_mutex), NULL);
         strcpy(new_cache_page->host_ip, host_ip);
 
-                LOG("\n\nBUFFER ::\n%s\n\n", new_cache_page->message);
-
-        LOG("TOTAL BYTES READ %d\n", new_cache_page->message_size);
-
-
         // check cache size
         if (curr_cache_size == CACHE_SIZE) {
-            // printf("ABABOBA\n\n");
             cache_page *cache_page_to_delete = (cache_page *)pqueue_dequeue(pqueue);
             if (cache_page_to_delete == NULL) {
                 ELOG("error :: pqueue_dequeue()\n"); 
@@ -319,7 +306,7 @@ void *handle_connect_request(int client_socket_fd) {
         }
 
         // add in cache
-        if (map_set(&map, host_ip, new_cache_page) == -1) {
+        if (map_set(&map, host_ip, (void *)new_cache_page) == -1) {
             ELOG("error :: map_set()\n");
             free(buffer);
             free(new_cache_page);
