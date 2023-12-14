@@ -27,24 +27,22 @@
 #define CACHE_SIZE 10
 
 typedef struct cache_page_s {
-    pthread_mutex_t page_mutex;
-    int times_used;
+    long int times_used;
     char host_ip[16];
     int message_size;
     char *message;
 } cache_page;
 
+static volatile sig_atomic_t stop_flag;
 typedef map_t(cache_page *) cache_map_t;
 static cache_map_t map;
 static size_t curr_cache_size;
-static pthread_mutex_t global_mutex;
+static pthread_mutex_t cache_mutex;
 
 static PQueue *pqueue;
 
-// TODO
-// добавить signal handlers
-// добавить кэш
-
+int init_signals();
+void signals_handler();
 int open_proxy_listening_socket(int listening_socket_fd, int port);
 int parse_http_request(char *buffer, int buffer_len, char *ip, int ip_length, char *port);
 void *handle_connect_request(int client_socket_fd);
@@ -53,6 +51,10 @@ int pqueue_cmp(const void *d1, const void *d2);
 
 int proxy_run(int port) {
     int listening_socket_fd = -1;
+    if (init_signals() == -1) {
+        ELOG("error :: cannot initiate signals handler\n");
+        return -1;
+    }
     LOG("proxy is starting ...\n");
 
     listening_socket_fd = open_proxy_listening_socket(listening_socket_fd, port);
@@ -63,19 +65,19 @@ int proxy_run(int port) {
     }
 
     map_init(&map);
-    pthread_mutex_init(&global_mutex, NULL);
+    pthread_mutex_init(&cache_mutex, NULL);
     pqueue = pqueue_new(&pqueue_cmp, CACHE_SIZE);
     if (pqueue == NULL) {
         ELOG("error :: cannot open proxy listening socket\n");
         close(listening_socket_fd);
         map_deinit(&map);
-        pthread_mutex_destroy(&global_mutex);
+        pthread_mutex_destroy(&cache_mutex);
         return -1;
     }
 
     LOG("proxy starts listening for connections ...\n");
 
-    while (1) {
+    while (!stop_flag) {
         pthread_t tid;
         pthread_attr_t attr;
         int client_socket_fd;
@@ -106,12 +108,26 @@ int proxy_run(int port) {
         }
 
         pthread_attr_destroy(&attr);
-
-        // sleep(1);
     }
-    proxy_stop();
+
+    proxy_stop(listening_socket_fd);
 }
 
+int init_signals() {
+    struct sigaction act;
+    act.sa_sigaction = &signals_handler;
+    for (int signal = SIGRTMIN; signal <= SIGRTMAX; signal++) {
+        if (sigaction(signal, &act, NULL) == -1) {
+            ELOG("error :: sigaction() :: %s\n", strerror(errno));
+            return -1;
+        }
+    }
+    return 0;
+}
+
+void signals_handler() {
+    stop_flag = 1;
+}
 
 int open_proxy_listening_socket(int listening_socket_fd, int port) {
     struct sockaddr_in proxy_addr;
@@ -183,21 +199,21 @@ void *handle_connect_request(int client_socket_fd) {
     }
 
     // check cache
+    pthread_mutex_lock(&cache_mutex);
     if ((cache_ptr = map_get(&map, host_ip)) != NULL) {
-        LOG("HASH HIT\n");
-
-        // LOG("HOST :: %s\n", cache_ptr->host_ip);
-        // LOG("BUFFER SIZE :: %d\n", cache_ptr->message_size);
-        // LOG("TIMES USED :: %d\n", cache_ptr->times_used);
+        LOG("CACHE HIT\n");
 
         bytes_written = write(client_socket_fd, cache_ptr->message, cache_ptr->message_size);
         if (bytes_written == -1) {
             ELOG("error :: write() :: %s\n", strerror(errno));
+            pthread_mutex_unlock(&cache_mutex);
             close(client_socket_fd);
             close(host_socket_fd);
             return NULL;
         }
         cache_ptr->times_used += 1;
+
+        pthread_mutex_unlock(&cache_mutex);
 
         LOG("closing connection on socket %d\n", client_socket_fd);
 
@@ -205,8 +221,10 @@ void *handle_connect_request(int client_socket_fd) {
         close(client_socket_fd);
     } 
     else {
+        pthread_mutex_unlock(&cache_mutex);
+
         cache_page *new_cache_page = NULL;
-        LOG("HASH MISS\n");
+        LOG("CACHE MISS\n");
         LOG("trying connect to host :: %s:%s on socket %d\n", host_ip, host_port, client_socket_fd);
 
         host_socket_fd = socket(AF_INET, SOCK_STREAM, 0); 
@@ -290,20 +308,20 @@ void *handle_connect_request(int client_socket_fd) {
         new_cache_page->message = buffer;
         new_cache_page->message_size = total_bytes_read;
         new_cache_page->times_used = 1;
-        pthread_mutex_init(&(new_cache_page->page_mutex), NULL);
         strcpy(new_cache_page->host_ip, host_ip);
 
         // check cache size
+        pthread_mutex_lock(&cache_mutex);
         if (curr_cache_size == CACHE_SIZE) {
             cache_page *cache_page_to_delete = (cache_page *)pqueue_dequeue(pqueue);
             if (cache_page_to_delete == NULL) {
                 ELOG("error :: pqueue_dequeue()\n"); 
+                pthread_mutex_unlock(&cache_mutex);
                 free(buffer);
                 free(new_cache_page);
                 return NULL;
             }
             free(cache_page_to_delete->message);
-            pthread_mutex_destroy(&(new_cache_page->page_mutex));
             map_remove(&map, &(cache_page_to_delete->host_ip));
             free(cache_page_to_delete);
             curr_cache_size--;
@@ -318,15 +336,9 @@ void *handle_connect_request(int client_socket_fd) {
         }
         pqueue_enqueue(pqueue, new_cache_page);
         curr_cache_size++;
+        pthread_mutex_unlock(&cache_mutex);
 
         LOG("creating cache for %s has been successful\n", host_ip);
-        LOG("CURR CACHE SIZE :: %d\n\n", curr_cache_size);
-
-        // cache_page *tmp = map_get(&map, host_ip);
-
-        // LOG("HOST :: %s\n", tmp->host_ip);
-        // LOG("BUFFER SIZE :: %d\n", tmp->message_size);
-        // LOG("TIMES USED :: %d\n", tmp->times_used);
     }
 
     return NULL;
@@ -349,8 +361,6 @@ int parse_http_request(char *buffer, int buffer_len, char *ip, int ip_length, ch
         ELOG("error :: phr_parse_request()\n");
         return -1;
     }
-
-    // change to strcmp
 
     size_t i;
     for (i = 0; i < num_headers; i++) {
@@ -375,7 +385,6 @@ int parse_http_request(char *buffer, int buffer_len, char *ip, int ip_length, ch
 
     if (strcmp(port, DEFAULT_PORT) != 0) { 
         ELOG("warning :: get port which is default for unsupported protocol\n");
-        // return -1;
     }
 
     memset(&hints, 0, sizeof(hints));
@@ -412,7 +421,7 @@ int parse_http_request(char *buffer, int buffer_len, char *ip, int ip_length, ch
 }
 
 int pqueue_cmp(const void *d1, const void *d2) {
-    return 1;
+    return ((cache_page *)d1)->times_used - ((cache_page *)d2)->times_used;
 }
 
 int proxy_stop(int listening_socket_fd) {
