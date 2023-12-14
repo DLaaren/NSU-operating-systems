@@ -26,15 +26,16 @@
 #define DEFAULT_PORT "80"
 #define CACHE_SIZE 10
 
-typedef struct cache_page {
+typedef struct cache_page_s {
     pthread_mutex_t page_mutex;
-    size_t times_used;
+    int times_used;
     char host_ip[16];
-    size_t message_size;
+    int message_size;
     char *message;
 } cache_page;
 
-static map_void_t map;
+typedef map_t(cache_page *) cache_map_t;
+static cache_map_t map;
 static size_t curr_cache_size;
 static pthread_mutex_t global_mutex;
 
@@ -106,7 +107,7 @@ int proxy_run(int port) {
 
         pthread_attr_destroy(&attr);
 
-        sleep(100);
+        // sleep(1);
     }
     proxy_stop();
 }
@@ -152,7 +153,7 @@ void *handle_connect_request(int client_socket_fd) {
     int bytes_read = 0; 
     int bytes_written = 0;
     char *buffer = (char *)malloc(BUFFER_SIZE * sizeof(char));
-    char *cache_ptr = NULL;
+    cache_page *cache_ptr = NULL;
     int total_bytes_sent = 0;
     int total_bytes_read = 0;
 
@@ -185,16 +186,18 @@ void *handle_connect_request(int client_socket_fd) {
     if ((cache_ptr = map_get(&map, host_ip)) != NULL) {
         LOG("HASH HIT\n");
 
-        cache_page *cache = (cache_page *)cache_ptr;
+        LOG("HOST :: %s\n", cache_ptr->host_ip);
+        LOG("BUFFER SIZE :: %d\n", cache_ptr->message_size);
+        LOG("TIMES USED :: %d\n", cache_ptr->times_used);
 
-        bytes_written = write(client_socket_fd, cache->message, cache->message_size);
+        bytes_written = write(client_socket_fd, cache_ptr->message, cache_ptr->message_size);
         if (bytes_written == -1) {
             ELOG("error :: write() :: %s\n", strerror(errno));
             close(client_socket_fd);
             close(host_socket_fd);
             return NULL;
         }
-        cache->times_used += 1;
+        cache_ptr->times_used += 1;
 
         LOG("closing connection on socket %d\n", client_socket_fd);
 
@@ -283,7 +286,7 @@ void *handle_connect_request(int client_socket_fd) {
         LOG("creating cache for %s\n", host_ip);
 
         // create new cache page
-        new_cache_page = (cache_page *)malloc(1 * sizeof(cache_page));
+        new_cache_page = malloc(1 * sizeof(cache_page));
         new_cache_page->message = buffer;
         new_cache_page->message_size = total_bytes_read;
         new_cache_page->times_used = 1;
@@ -301,19 +304,29 @@ void *handle_connect_request(int client_socket_fd) {
             }
             free(cache_page_to_delete->message);
             pthread_mutex_destroy(&(new_cache_page->page_mutex));
-            map_remove_(&map, &(cache_page_to_delete->host_ip));
+            map_remove(&map, &(cache_page_to_delete->host_ip));
+            free(cache_page_to_delete);
             curr_cache_size--;
         }
 
         // add in cache
-        if (map_set(&map, host_ip, (void *)new_cache_page) == -1) {
+        if (map_set_(&map, host_ip, new_cache_page, sizeof(cache_page)) != 0) {
             ELOG("error :: map_set()\n");
             free(buffer);
             free(new_cache_page);
             return NULL;
         }
-        pqueue_enqueue(pqueue, (void *)new_cache_page);
+        pqueue_enqueue(pqueue, new_cache_page);
         curr_cache_size++;
+
+        LOG("creating cache for %s has been successful\n", host_ip);
+        LOG("CURR CACHE SIZE :: %d\n\n", curr_cache_size);
+
+        // cache_page *tmp = map_get(&map, host_ip);
+
+        // LOG("HOST :: %s\n", tmp->host_ip);
+        // LOG("BUFFER SIZE :: %d\n", tmp->message_size);
+        // LOG("TIMES USED :: %d\n", tmp->times_used);
     }
 
     return NULL;
