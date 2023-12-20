@@ -4,7 +4,7 @@
 PROXY_HOST="127.0.0.1"
 PROXY_PORT="1234"
 URL="http://ccfit.nsu.ru/~rzheutskiy/test_files/200mb.dat"
-REQUESTS=1
+REQUESTS=10
 WGET_FLAGS="--no-http-keep-alive"
 WGET_OPTIONS="-e use_proxy=on"
 

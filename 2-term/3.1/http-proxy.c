@@ -24,7 +24,7 @@
 #define MAX_CONNECTIONS 10
 #define BUFFER_SIZE 2048
 #define DEFAULT_PORT "80"
-#define CACHE_SIZE 10
+#define CACHE_SIZE 30
 
 typedef struct cache_page_s {
     long int times_used;
