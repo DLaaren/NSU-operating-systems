@@ -1,2 +1,5 @@
-# OS_labs --- my fav subject♡♡
-2 course
+# NSU-operating-systems ♡♡
+
+2-3 курс
+
+Семенарист = Гришкин
